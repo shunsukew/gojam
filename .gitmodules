@@ -1,0 +1,3 @@
+[submodule "@jamtestvectors"]
+	path = @jamtestvectors
+	url = https://github.com/w3f/jamtestvectors

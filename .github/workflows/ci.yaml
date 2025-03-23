@@ -1,0 +1,25 @@
+name: CI
+on:
+  pull_request:
+
+# To cancel the previous runs when a new executions is started, configure concurrency.
+# This is recommended in order to prevent multiple executions running simultaneously.
+# https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#concurrency
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.ref_type== 'branch'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version-file: './go.mod'
+          cache: false
+      - name: Run Go Build
+        run: make build
