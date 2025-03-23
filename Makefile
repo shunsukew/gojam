@@ -9,6 +9,10 @@ fmt:
 lint:
 	golangci-lint run --timeout=5m
 
+.PHONY: test
+test:
+	go test -v ./...
+
 .PHONY: build
 build:
 	GOOS=${GOOS} GOARCH=${GOARCH} go build -o gojam ./cmd/main.go
