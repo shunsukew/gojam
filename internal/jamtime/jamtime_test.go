@@ -11,6 +11,28 @@ func TestEpochDuration(t *testing.T) {
 	}
 }
 
+func TestJAMTimeToTimeSlot(t *testing.T) {
+	jt := JAMTime{seconds: 5}
+	if jt.TimeSlot() != 0 {
+		t.Errorf("Expected TimeSlot to be 0, got %d", jt.TimeSlot())
+	}
+
+	jt = JAMTime{seconds: 6}
+	if jt.TimeSlot() != 1 {
+		t.Errorf("Expected TimeSlot to be 1, got %d", jt.TimeSlot())
+	}
+
+	jt = JAMTime{seconds: 7}
+	if jt.TimeSlot() != 1 {
+		t.Errorf("Expected TimeSlot to be 1, got %d", jt.TimeSlot())
+	}
+
+	jt = JAMTime{seconds: 12}
+	if jt.TimeSlot() != 2 {
+		t.Errorf("Expected TimeSlot to be 2, got %d", jt.TimeSlot())
+	}
+}
+
 func TestJAMTimeToEpoc(t *testing.T) {
 	jt := JAMTime{seconds: 3600}
 	if jt.Epoch() != 1 {
@@ -28,20 +50,35 @@ func TestJAMTimeToEpoc(t *testing.T) {
 	}
 }
 
-func TestJAMTimeToTimeSlot(t *testing.T) {
-	jt := JAMTime{seconds: 6}
-	if jt.TimeSlot() != 1 {
-		t.Errorf("Expected TimeSlot to be 1, got %d", jt.TimeSlot())
+func TestJAMTimeToTimeSlotInEpoch(t *testing.T) {
+	jt := JAMTime{seconds: 5}
+	if jt.TimeSlotInEpoch() != 0 {
+		t.Errorf("Expected TimeSlotInEpoch to be 0, got %d", jt.TimeSlotInEpoch())
+	}
+
+	jt = JAMTime{seconds: 6}
+	if jt.TimeSlotInEpoch() != 1 {
+		t.Errorf("Expected TimeSlotInEpoch to be 1, got %d", jt.TimeSlotInEpoch())
 	}
 
 	jt = JAMTime{seconds: 7}
-	if jt.TimeSlot() != 1 {
-		t.Errorf("Expected TimeSlot to be 1, got %d", jt.TimeSlot())
+	if jt.TimeSlotInEpoch() != 1 {
+		t.Errorf("Expected TimeSlotInEpoch to be 1, got %d", jt.TimeSlotInEpoch())
 	}
 
-	jt = JAMTime{seconds: 5}
-	if jt.TimeSlot() != 0 {
-		t.Errorf("Expected TimeSlot to be 0, got %d", jt.TimeSlot())
+	jt = JAMTime{seconds: 12}
+	if jt.TimeSlotInEpoch() != 2 {
+		t.Errorf("Expected TimeSlotInEpoch to be 599, got %d", jt.TimeSlotInEpoch())
+	}
+
+	jt = JAMTime{seconds: 3599}
+	if jt.TimeSlotInEpoch() != 599 {
+		t.Errorf("Expected TimeSlotInEpoch to be 599, got %d", jt.TimeSlotInEpoch())
+	}
+
+	jt = JAMTime{seconds: 3600}
+	if jt.TimeSlotInEpoch() != 0 {
+		t.Errorf("Expected TimeSlotInEpoch to be 0, got %d", jt.TimeSlotInEpoch())
 	}
 }
 
