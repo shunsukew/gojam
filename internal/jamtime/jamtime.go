@@ -9,6 +9,8 @@ const (
 	TimeSlotsPerEpoch = 600                                  // E
 	TimeSlotDuration  = 6 * time.Second                      // P
 	EpochDuration     = TimeSlotsPerEpoch * TimeSlotDuration // E * P (= 3600)
+
+	TicketSubmissionDeadline = 500 // Y
 )
 
 type JAMTime struct {
@@ -18,6 +20,8 @@ type JAMTime struct {
 type Epoch uint32
 
 type TimeSlot uint32
+
+type TimeSlotInEpoch uint32
 
 func Now() JAMTime {
 	now := time.Now().Unix()
@@ -36,12 +40,16 @@ func (jt *JAMTime) Seconds() uint64 {
 	return jt.seconds
 }
 
-func (jt *JAMTime) Epoch() Epoch {
-	return Epoch(jt.seconds / uint64(EpochDuration.Seconds()))
-}
-
 func (jt *JAMTime) TimeSlot() TimeSlot {
 	return TimeSlot(jt.seconds / uint64(TimeSlotDuration.Seconds()))
+}
+
+func (jt *JAMTime) Epoch() Epoch {
+	return Epoch(jt.TimeSlot() / TimeSlotsPerEpoch)
+}
+
+func (jt *JAMTime) TimeSlotInEpoch() TimeSlotInEpoch {
+	return TimeSlotInEpoch(jt.TimeSlot() % TimeSlotsPerEpoch)
 }
 
 func (jt *JAMTime) Time() time.Time {
