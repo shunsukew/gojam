@@ -33,7 +33,7 @@ type SafroleState struct {
 	TicketsAccumulator []Ticket                                  // γa: the ticket accumulator, a series of highest scoring ticket identifiers to be used for the "next" epoch.
 }
 
-func (s *SafroleState) ComputeRingRoot() (bandersnatch.RingRoot, error) {
+func (s *SafroleState) ComputeRingRoot(validtorKeys [common.NumOfValidators]keys.ValidatorKey) (bandersnatch.RingRoot, error) {
 	// TODO: Implement the logic to compute the Bandersnatch ring root.
 
 	return bandersnatch.RingRoot{}, nil
