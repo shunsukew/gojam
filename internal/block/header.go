@@ -1,7 +1,10 @@
 package block
 
 import (
+	"crypto/ed25519"
+
 	"github.com/shunsukew/gojam/internal/jamtime"
+	"github.com/shunsukew/gojam/internal/validator/safrole"
 	"github.com/shunsukew/gojam/pkg/common"
 	"github.com/shunsukew/gojam/pkg/crypto/bandersnatch"
 )
@@ -13,19 +16,27 @@ type Header struct {
 	PriorStateRoot      common.Hash            // Hr
 	ExtrinsicHash       common.Hash            // Hx
 	TimeSlot            jamtime.TimeSlot       // Ht
-	EpochMarker         *EpochMarker           // He (optional)
-	WinningTicketMarker *WinningTicketMarker   // Hw (optional)
+	EpochMarker         *EpochMarker           // He (optional, non-empty when e' > e)
+	WinningTicketMarker *WinningTicketMarker   // Hw (optional, non-empty when e' > e)
 	OffendersMarker     *OffendersMarker       // Ho (optional)
-	BlockAuthorIndex    uint16                 // Hi // TODO: Check maximum number, and decide uint size
+	BlockAuthorIndex    uint16                 // Hi: Hi ∈ NumV. V = 1023: The total number of validators.
 	VRFSignature        bandersnatch.Signature // Hv
 	BlockSealSignature  bandersnatch.Signature // Hs
 }
 
 type EpochMarker struct {
+	// TODO: Should be entropies array, access by index 0, 1
+	Entropies struct {
+		Next    common.Hash // μ0 // TODO: identify what μ0 actually is in this context.
+		Current common.Hash // μ1 // TODO: identify what μ1 actually is in this context.
+	}
+	BandersnatchPubKeys [common.NumOfValidators]bandersnatch.PublicKey
 }
 
 type WinningTicketMarker struct {
+	Tickets safrole.Tickets
 }
 
 type OffendersMarker struct {
+	Offenders []ed25519.PublicKey
 }

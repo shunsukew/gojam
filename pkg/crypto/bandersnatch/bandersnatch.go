@@ -4,10 +4,20 @@ type PrivateKey [32]byte
 
 type PublicKey [32]byte
 
-func (pk PublicKey) SealingKeyKind() {}
+type RingRoot [144]byte
 
 type Signature [96]byte
 
-type OutputHash [32]byte
+func (sig Signature) Output() VrfOutput {
+	// TODO: implement this
+	return VrfOutput{}
+}
 
-type RingRoot [144]byte
+type VrfProof [784]byte
+
+func (proof VrfProof) Output() VrfOutput {
+	// TODO: implement this
+	return VrfOutput{}
+}
+
+type VrfOutput [32]byte
