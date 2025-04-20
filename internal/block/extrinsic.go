@@ -2,10 +2,6 @@ package block
 
 import "github.com/shunsukew/gojam/internal/validator/safrole"
 
-const (
-	MaxTicketsInExtrinsic = 16 // K
-)
-
 // Hasing Extrinsic
 // (5.4) (5.5) (5.6)
 // Hx ∈ H , Hx ≡ H(E(H#(a)))

@@ -1,6 +1,10 @@
 package safrole
 
 import (
+	"bytes"
+	"sort"
+
+	"github.com/pkg/errors"
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/internal/validator/keys"
 	"github.com/shunsukew/gojam/pkg/codec"
@@ -13,6 +17,7 @@ const (
 	NumOfTicketEntries      = 2 // N: The number of ticket entries per validator.
 	MaxTicketEntryIndex     = 1 // entry index should be 0 or 1.
 	MaxTicketsInAccumulator = jamtime.TimeSlotsPerEpoch
+	MaxTicketsInExtrinsic   = 16 // K: The number of tickets in an extrinsic.
 )
 
 type SealingKeySeriesKind interface {
@@ -29,6 +34,21 @@ type Ticket struct {
 type Tickets []Ticket
 
 func (t Tickets) SealingKeySeries() {}
+
+func (tickets Tickets) IsSortedNonDuplicates() bool {
+	for i := 1; i < len(tickets); i++ {
+		if bytes.Compare(tickets[i-1].TicketID[:], tickets[i].TicketID[:]) != -1 {
+			return false
+		}
+	}
+	return true
+}
+
+func (tickets Tickets) Sort() {
+	sort.Slice(tickets, func(i, j int) bool {
+		return bytes.Compare(tickets[i].TicketID[:], tickets[j].TicketID[:]) == -1
+	})
+}
 
 type TicketProof struct {
 	EntryIndex  uint8                 // r: r ∈ NumN.
@@ -50,9 +70,63 @@ func (s *SafroleState) IsTicketAccumulatorFull() bool {
 	return len(s.TicketsAccumulator) == MaxTicketsInAccumulator
 }
 
-func (s *SafroleState) AccumulateTickets(incoming []TicketProof) error {
-	if len(incoming) == 0 {
+func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof) error {
+	if len(ticketProofs) == 0 {
 		return nil
+	}
+
+	if len(ticketProofs) > MaxTicketsInExtrinsic {
+		return errors.WithMessage(ErrInvalidTicketSubmissions, "too many tickets in extrinsic")
+	}
+
+	priorAccumulatedTicketIDs := make(map[bandersnatch.VrfOutput]struct{}, len(s.TicketsAccumulator))
+	for _, ticket := range s.TicketsAccumulator {
+		priorAccumulatedTicketIDs[ticket.TicketID] = struct{}{}
+	}
+
+	newTickets := make([]Ticket, len(ticketProofs))
+	for i, ticketProof := range ticketProofs {
+		if ticketProof.EntryIndex > MaxTicketEntryIndex {
+			return errors.WithMessage(ErrInvalidTicketSubmissions, "ticket entry index is invalid")
+		}
+
+		// TODO: Implement the logic to verify the ticket proof and get output hash
+		vrfOutput := ticketProof.TicketProof.Output()
+
+		if _, found := priorAccumulatedTicketIDs[vrfOutput]; found {
+			return errors.WithMessagef(ErrInvalidTicketSubmissions, "ticke already exists in accumulator")
+		}
+
+		newTickets[i] = Ticket{
+			EntryIndex: ticketProof.EntryIndex,
+			TicketID:   vrfOutput,
+		}
+	}
+
+	// Ensure newTickets are already ordered by ticket id and no duplicates
+	// Equation (6.32) n = [xy _ x ∈ n]
+	if !Tickets(newTickets).IsSortedNonDuplicates() {
+		return errors.WithMessage(ErrInvalidTicketSubmissions, "submitted tickets are not sorted or have duplicates")
+	}
+
+	newTicketsAccumulator := make([]Ticket, 0, len(s.TicketsAccumulator)+len(newTickets))
+	copy(newTicketsAccumulator, s.TicketsAccumulator)
+	copy(newTicketsAccumulator[len(s.TicketsAccumulator):], newTickets)
+
+	// Equation (6.34), sort the tickets and keep the top K tickets
+	Tickets(newTicketsAccumulator).Sort()
+	s.TicketsAccumulator = newTicketsAccumulator[:MaxTicketsInAccumulator]
+
+	// Equation (6.35)
+	// Ensure all newly submitted tickets are added to the accumulator
+	accumulatedTicketIDs := make(map[bandersnatch.VrfOutput]struct{}, len(s.TicketsAccumulator))
+	for _, ticket := range s.TicketsAccumulator {
+		accumulatedTicketIDs[ticket.TicketID] = struct{}{}
+	}
+	for _, ticket := range newTickets {
+		if _, found := accumulatedTicketIDs[ticket.TicketID]; !found {
+			return errors.WithMessage(ErrInvalidTicketSubmissions, "useless tickets were included")
+		}
 	}
 
 	return nil
@@ -63,7 +137,7 @@ func (s *SafroleState) ResetTicketsAccumulator() {
 }
 
 func (s *SafroleState) ComputeRingRoot() error {
-	// TODO: Implement the logic to compute the Bandersnatch ring root.
+	// TODO: Implement the logic to compute the Bandersnatch ring root
 
 	// calcurate ring by using pending validators keys
 

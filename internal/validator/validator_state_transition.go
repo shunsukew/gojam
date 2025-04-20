@@ -31,7 +31,7 @@ func (s *ValidatorState) Update(
 
 	if !currTimeSlot.InTicketSubmissionPeriod() && len(ticketProofs) > 0 {
 		return entropyPool, nil, nil, errors.WithMessagef(
-			ErrInvalidTicketSubmissions,
+			safrole.ErrInvalidTicketSubmissions,
 			"outside of ticket submission period but got ticket proofs",
 		)
 	}
@@ -65,6 +65,7 @@ func (s *ValidatorState) Update(
 			s.SafroleState.SealingKeySeries = fallBackKeys
 		}
 
+		// As defined in equation (6.34), reset prior accumulator γa when e' > e
 		s.SafroleState.ResetTicketsAccumulator()
 	}
 
