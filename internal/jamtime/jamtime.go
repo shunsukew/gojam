@@ -60,6 +60,10 @@ func (jt *JAMTime) Time() time.Time {
 
 type Epoch uint32
 
+func (e1 Epoch) Equal(e2 Epoch) bool {
+	return e1 == e2
+}
+
 func (e1 Epoch) Before(e2 Epoch) bool {
 	return e1 < e2
 }
