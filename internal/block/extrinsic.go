@@ -1,5 +1,13 @@
 package block
 
+import "github.com/shunsukew/gojam/internal/validator/safrole"
+
+// Hasing Extrinsic
+// (5.4) (5.5) (5.6)
+// Hx ∈ H , Hx ≡ H(E(H#(a)))
+// where a = [ET(ET),EP(EP ),g,EA(EA),ED(ED)]
+// and g = E(↕[E(H(w), E4(t), ↕a) ∣ (w, t, a) −< EG])
+
 type Extrinsic struct {
 	TicketsExtrinsic     // ET: Tickets, used for the mechanism which manages the selection of validators for the permissioning of block authoring.
 	PreimagesExtrinsic   // EP: Static data which is presently being requested to be available for workloads to be able to fetch on demand.
@@ -8,7 +16,9 @@ type Extrinsic struct {
 	DisputesExtrinsic    // ED: Information relating to disputes between validators over the validity of reports.
 }
 
-type TicketsExtrinsic struct{}
+type TicketsExtrinsic struct {
+	Tickets []safrole.TicketProof
+}
 
 type PreimagesExtrinsic struct{}
 

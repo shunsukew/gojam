@@ -17,11 +17,13 @@ type JAMTime struct {
 	seconds uint64
 }
 
-type Epoch uint32
+func (jt JAMTime) Before(t2 JAMTime) bool {
+	return jt.seconds < t2.seconds
+}
 
-type TimeSlot uint32
-
-type TimeSlotInEpoch uint32
+func (jt JAMTime) After(t2 JAMTime) bool {
+	return jt.seconds > t2.seconds
+}
 
 func Now() JAMTime {
 	now := time.Now().Unix()
@@ -54,4 +56,66 @@ func (jt *JAMTime) TimeSlotInEpoch() TimeSlotInEpoch {
 
 func (jt *JAMTime) Time() time.Time {
 	return JAMCommonEra.Add(time.Duration(jt.seconds) * time.Second)
+}
+
+type Epoch uint32
+
+func (e1 Epoch) Equal(e2 Epoch) bool {
+	return e1 == e2
+}
+
+func (e1 Epoch) Before(e2 Epoch) bool {
+	return e1 < e2
+}
+
+func (e1 Epoch) After(e2 Epoch) bool {
+	return e1 > e2
+}
+
+func (e1 Epoch) IsNextEpoch(e2 Epoch) bool {
+	return e1+1 == e2
+}
+
+type TimeSlot uint32
+
+func (ts1 TimeSlot) Before(ts2 TimeSlot) bool {
+	return ts1 < ts2
+}
+
+func (ts1 TimeSlot) After(ts2 TimeSlot) bool {
+	return ts1 > ts2
+}
+
+func (ts1 TimeSlot) IsNextTimeSlot(ts2 TimeSlot) bool {
+	return ts1+1 == ts2
+}
+
+func (ts TimeSlot) InTicketSubmissionPeriod() bool {
+	return ts.ToTimeSlotInEpoch() < TicketSubmissionDeadline
+}
+
+func (ts TimeSlot) ToEpoch() Epoch {
+	return Epoch(ts / TimeSlotsPerEpoch)
+}
+
+func (ts TimeSlot) ToTimeSlotInEpoch() TimeSlotInEpoch {
+	return TimeSlotInEpoch(ts % TimeSlotsPerEpoch)
+}
+
+type TimeSlotInEpoch uint32
+
+func (tsie TimeSlotInEpoch) Before(tsie2 TimeSlotInEpoch) bool {
+	return tsie < tsie2
+}
+
+func (tsie TimeSlotInEpoch) After(tsie2 TimeSlotInEpoch) bool {
+	return tsie > tsie2
+}
+
+func (tsie TimeSlotInEpoch) IsNextTimeSlot(tsie2 TimeSlotInEpoch) bool {
+	return tsie+1 == tsie2
+}
+
+func (tsie TimeSlotInEpoch) InTicketSubmissionPeriod() bool {
+	return tsie < TicketSubmissionDeadline
 }

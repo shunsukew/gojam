@@ -21,14 +21,13 @@ func (vs *ValidatorState) RotateValidators(offenders []ed25519.PublicKey) error 
 	vs.ArchivedValidators = vs.ActiveValidators
 	vs.ActiveValidators = vs.SafroleState.PendingValidators
 
-	var err error
-	vs.SafroleState.EpochRoot, err = vs.SafroleState.ComputeRingRoot(vs.ActiveValidators)
+	vs.SafroleState.PendingValidators = vs.StagingValidators
+	vs.nullifyOffenders(offenders)
+
+	err := vs.SafroleState.ComputeRingRoot()
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
-	vs.SafroleState.PendingValidators = vs.StagingValidators
-	vs.nullifyOffenders(offenders)
 
 	return nil
 }
