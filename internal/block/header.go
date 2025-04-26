@@ -25,10 +25,9 @@ type Header struct {
 }
 
 type EpochMarker struct {
-	// TODO: Should be entropies array, access by index 0, 1
 	Entropies struct {
-		Next    common.Hash // μ0 // TODO: identify what μ0 actually is in this context.
-		Current common.Hash // μ1 // TODO: identify what μ1 actually is in this context.
+		Next    common.Hash // μ0
+		Current common.Hash // μ1
 	}
 	BandersnatchPubKeys [common.NumOfValidators]bandersnatch.PublicKey
 }

@@ -1,0 +1,12 @@
+language = "C"
+include_version = false
+pragma_once = true
+
+[parse]
+parse_deps = false
+clean = true
+
+[export]
+include = [
+    "new_ring_verifier_commitment",
+]

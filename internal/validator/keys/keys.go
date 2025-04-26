@@ -8,7 +8,6 @@ import (
 )
 
 // Validator keys tuple. Defined as K;blackboard in the Gray Paper
-// TODO: should be encoded to 336-octet sequences.
 type ValidatorKey struct {
 	BandersnatchPublicKey bandersnatch.PublicKey // kb
 	Ed25519PublicKey      ed25519.PublicKey      // ke

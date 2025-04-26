@@ -7,4 +7,7 @@ require (
 	golang.org/x/crypto v0.37.0
 )
 
-require golang.org/x/sys v0.32.0 // indirect
+require (
+	github.com/docknetwork/scale-codec-go v0.0.0-20191016200846-7e284da7c1b1 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+)

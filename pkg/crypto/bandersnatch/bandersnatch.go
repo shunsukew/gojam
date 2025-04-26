@@ -1,10 +1,15 @@
 package bandersnatch
 
+const (
+	PublicKeySize      = 32
+	RingCommitmentSize = 144
+)
+
 type PrivateKey [32]byte
 
-type PublicKey [32]byte
+type PublicKey [PublicKeySize]byte
 
-type RingRoot [144]byte
+type RingCommitment [RingCommitmentSize]byte
 
 type Signature [96]byte
 
