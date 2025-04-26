@@ -1,8 +1,7 @@
 package bandersnatch
 
-// #cgo LDFLAGS: ../../../rust/bandersnatch-ring-vrf/target/release/libbandersnatch_ring_vrf.a -ldl
+// #cgo LDFLAGS: -L../../../rust/bandersnatch-ring-vrf/target/release -llibbandersnatch_ring_vrf.a -ldl
 // #include "../../../rust/bandersnatch-ring-vrf/headers/ringvrf.h"
-
 import "C"
 
 import (
