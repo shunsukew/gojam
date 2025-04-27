@@ -16,6 +16,7 @@ macro_rules! srs_file_path {
     };
 }
 
+const DEFAULT_RING_SIZE: usize = 1023;
 pub const RING_COMMITMENT_SIZE: usize = 144;
 pub const PUBKEY_SIZE: usize = 32;
 pub const SECRET_SIZE: usize = 32;
@@ -24,13 +25,10 @@ pub const OUTPUT_HASH_SIZE: usize = 32;
 
 fn ring_size() -> usize {
     static RING_SIZE: OnceLock<usize> = OnceLock::new();
-    // TODO: Make this ring size configurable from outer world (Golang size)
-    // 1023 is current number of validators defined in Graypaper
-    *RING_SIZE.get_or_init(|| 1023)
+    *RING_SIZE.get_or_init(|| DEFAULT_RING_SIZE)
 }
 
 fn ring_proof_params() -> &'static RingProofParams {
-    use std::sync::OnceLock;
     static PARAMS: OnceLock<RingProofParams> = OnceLock::new();
     PARAMS.get_or_init(|| {
         let buf: &[u8] = include_bytes!(srs_file_path!());
@@ -108,17 +106,15 @@ pub unsafe extern "C" fn new_ring_commitment(
     ring_len: size_t,
     commitment_out_ptr: *mut c_uchar,
 ) -> bool {
-    if ring_ptr.is_null()
-        || ring_len != ring_size()
-        || commitment_out_ptr.is_null()
-    {
+    if ring_ptr.is_null() || commitment_out_ptr.is_null() {
         return false;
     }
 
     let ring_pubkeys: &[[u8; PUBKEY_SIZE]] = slice::from_raw_parts(ring_ptr, ring_len as usize);
-
+    
     let padding_point = Public::from(RingProofParams::padding_point());
     let mut points = Vec::with_capacity(ring_pubkeys.len());
+
     for pubkey in ring_pubkeys.iter() {
         let point = match Public::deserialize_compressed(pubkey.as_slice()) {
             Ok(p) => p.0, // p.0 is type AffinePoint
@@ -163,9 +159,6 @@ pub unsafe extern "C" fn ring_vrf_sign(
         return false;
     }
 
-    if ring_len != ring_size() {
-        return false;
-    }
 
     let ring_pubkeys: &[[u8; PUBKEY_SIZE]] = slice::from_raw_parts(ring_ptr, ring_len as usize);
     let prover_idx = *prover_idx as usize;
