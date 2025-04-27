@@ -8,5 +8,9 @@ clean = true
 
 [export]
 include = [
-    "new_ring_verifier_commitment",
+    "new_secret_from_seed",
+    "new_public_key_from_secret",
+    "new_ring_commitment",
+    "ring_vrf_sign",
+    "ring_vrf_verify",
 ]

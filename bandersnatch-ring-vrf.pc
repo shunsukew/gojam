@@ -1,0 +1,10 @@
+prefix=${pcfiledir}
+exec_prefix=${prefix}/rust/bandersnatch-ring-vrf
+libdir=${exec_prefix}/target/release
+includedir=${prefix}/rust/bandersnatch-ring-vrf/include
+
+Name: bandersnatch-ring-vrf
+Description: Bandersnatch Ring VRF C library
+Version: 0.1.0
+Libs: -L${libdir} -lbandersnatch_ring_vrf -ldl
+Cflags: -I${includedir}

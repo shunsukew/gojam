@@ -19,7 +19,7 @@ build-rust:
 
 .PHONY: cbindgen
 cbindgen:
-	cd ./rust/bandersnatch-ring-vrf && cbindgen --config cbindgen.toml --crate bandersnatch-ring-vrf --output headers/ringvrf.h
+	cd ./rust/bandersnatch-ring-vrf && cbindgen --config cbindgen.toml --crate bandersnatch-ring-vrf --output include/bandersnatch-ring-vrf.h
 
 .PHONY: build
 build: build-rust cbindgen

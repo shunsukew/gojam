@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 ark-vrf = { git = "https://github.com/davxy/ark-vrf", tag = "v0.1.0", features = ["bandersnatch", "ring", "parallel"] }
+libc = "0.2"
 
 [lib]
 crate-type = ["staticlib"]

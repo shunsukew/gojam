@@ -5,3 +5,5 @@ gojam
 target
 
 .DS_Store
+.envrc
+.env

@@ -18,6 +18,8 @@ const (
 	MaxTicketEntryIndex     = 1 // entry index should be 0 or 1.
 	MaxTicketsInAccumulator = jamtime.TimeSlotsPerEpoch
 	MaxTicketsInExtrinsic   = 16 // K: The number of tickets in an extrinsic.
+
+	JamTicketSeal = "jam_ticket_seal"
 )
 
 type SealingKeySeriesKind interface {
@@ -51,8 +53,8 @@ func (tickets Tickets) Sort() {
 }
 
 type TicketProof struct {
-	EntryIndex  uint8                 // r: r ∈ NumN.
-	TicketProof bandersnatch.VrfProof // p: p ∈ F ̄[]γz ⟨XT ⌢ η2′ ++ r⟩
+	EntryIndex  uint8                  // r: r ∈ NumN.
+	TicketProof bandersnatch.Signature // p: p ∈ F ̄[]γz ⟨XT ⌢ η2′ ++ r⟩
 }
 
 type FallbackKeys [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey
@@ -70,7 +72,7 @@ func (s *SafroleState) IsTicketAccumulatorFull() bool {
 	return len(s.TicketsAccumulator) == MaxTicketsInAccumulator
 }
 
-func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof) error {
+func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof, priorEpochRoot bandersnatch.RingCommitment, entropy common.Hash) error {
 	if len(ticketProofs) == 0 {
 		return nil
 	}
@@ -90,8 +92,14 @@ func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof) error {
 			return errors.WithMessage(ErrInvalidTicketSubmissions, "ticket entry index is invalid")
 		}
 
-		// TODO: Implement the logic to verify the ticket proof and get output hash
-		vrfOutput := ticketProof.TicketProof.Output()
+		vrfOutput, err := ticketProof.TicketProof.Verify(
+			buildTicketSealInput(entropy, ticketProof.EntryIndex),
+			[]byte{},
+			priorEpochRoot,
+		)
+		if err != nil {
+			return errors.WithStack(err)
+		}
 
 		if _, found := priorAccumulatedTicketIDs[vrfOutput]; found {
 			return errors.WithMessagef(ErrInvalidTicketSubmissions, "ticke already exists in accumulator")
@@ -109,7 +117,7 @@ func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof) error {
 		return errors.WithMessage(ErrInvalidTicketSubmissions, "submitted tickets are not sorted or have duplicates")
 	}
 
-	newTicketsAccumulator := make([]Ticket, 0, len(s.TicketsAccumulator)+len(newTickets))
+	newTicketsAccumulator := make([]Ticket, len(s.TicketsAccumulator)+len(newTickets))
 	copy(newTicketsAccumulator, s.TicketsAccumulator)
 	copy(newTicketsAccumulator[len(s.TicketsAccumulator):], newTickets)
 
@@ -132,6 +140,13 @@ func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof) error {
 	return nil
 }
 
+func buildTicketSealInput(entropy common.Hash, entryIndex uint8) []byte {
+	data := []byte(JamTicketSeal)
+	data = append(data, entropy[:]...)
+	data = append(data, byte(entryIndex))
+	return data
+}
+
 func (s *SafroleState) ResetTicketsAccumulator() {
 	s.TicketsAccumulator = make([]Ticket, 0, MaxTicketsInAccumulator)
 }
@@ -142,7 +157,7 @@ func (s *SafroleState) ComputeRingRoot() error {
 		publicKeys[i] = validator.BandersnatchPublicKey
 	}
 
-	ringCommitment, err := bandersnatch.NewRingVerifierCommitment(publicKeys)
+	ringCommitment, err := bandersnatch.NewRingCommitment(publicKeys)
 	if err != nil {
 		return errors.WithStack(err)
 	}

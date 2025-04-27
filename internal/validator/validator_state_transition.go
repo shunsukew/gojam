@@ -24,7 +24,8 @@ func (s *ValidatorState) Update(
 ) (entropy.EntropyPool, *block.EpochMarker, *block.WinningTicketMarker, error) {
 	var epockMarker *block.EpochMarker
 	var winningTicketMarker *block.WinningTicketMarker
-	priorEntropyPool := entropyPool
+	prevEntropyPool := entropyPool
+	prevEpochRoot := s.SafroleState.EpochRoot
 
 	if !currTimeSlot.After(prevTimeSlot) {
 		return entropyPool, epockMarker, winningTicketMarker, errors.WithMessagef(
@@ -55,7 +56,7 @@ func (s *ValidatorState) Update(
 
 		// (6.27)
 		// He ≡ (η0, η1, [kb ∣k <− γk']) if e' > e
-		epockMarker = newEpochMarker(&priorEntropyPool, &s.ActiveValidators)
+		epockMarker = newEpochMarker(&prevEntropyPool, &s.ActiveValidators)
 
 		// Determine sealing key series
 		// Gray paper equation (6.24)
@@ -91,7 +92,7 @@ func (s *ValidatorState) Update(
 		winningTicketMarker = newWinningTicketMarker(&winningTickets)
 	}
 
-	err := s.SafroleState.AccumulateTickets(ticketProofs)
+	err := s.SafroleState.AccumulateTickets(ticketProofs, prevEpochRoot, entropyPool[2])
 	if err != nil {
 		return entropyPool, epockMarker, winningTicketMarker, errors.WithStack(err)
 	}
