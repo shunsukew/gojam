@@ -1,3 +1,9 @@
-
+# Bin
 gojam
+
+# Rust
+target
+
 .DS_Store
+.envrc
+.env

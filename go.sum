@@ -1,3 +1,5 @@
+github.com/docknetwork/scale-codec-go v0.0.0-20191016200846-7e284da7c1b1 h1:cqqE9Lwr1aGj1yJMe0O06iRGj6ssIIWI3kVHqGCF+TE=
+github.com/docknetwork/scale-codec-go v0.0.0-20191016200846-7e284da7c1b1/go.mod h1:KhjARxpza3tYh6e6/nzZqu2zTpOlPa6k1j5bmxmPSBE=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 golang.org/x/crypto v0.37.0 h1:kJNSjF/Xp7kU0iB2Z+9viTPMW4EqqsrywMXLJOOsXSE=

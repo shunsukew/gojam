@@ -1,23 +1,41 @@
 package bandersnatch
 
+import (
+	"github.com/pkg/errors"
+	"github.com/shunsukew/gojam/pkg/common"
+)
+
+const (
+	PrivateKeySize     = 32
+	PublicKeySize      = 32
+	RingCommitmentSize = 144
+	SignatureSize      = 784
+	VrfOutputSize      = 32
+)
+
 type PrivateKey [32]byte
 
-type PublicKey [32]byte
+type PublicKey [PublicKeySize]byte
 
-type RingRoot [144]byte
+type RingCommitment [RingCommitmentSize]byte
 
-type Signature [96]byte
+func NewRingCommitment(pubkeys []PublicKey) (RingCommitment, error) {
+	if len(pubkeys) != common.NumOfValidators {
+		return RingCommitment{}, errors.New("invalid number of public keys")
+	}
 
-func (sig Signature) Output() VrfOutput {
-	// TODO: implement this
-	return VrfOutput{}
+	return newRingCommitment(pubkeys)
 }
 
-type VrfProof [784]byte
+type Signature [784]byte
 
-func (proof VrfProof) Output() VrfOutput {
-	// TODO: implement this
-	return VrfOutput{}
+func (proof Signature) Verify(input, auxData []byte, ringCommitment RingCommitment) (VrfOutput, error) {
+	output, err := verify(input, auxData, ringCommitment, proof)
+	if err != nil {
+		return VrfOutput{}, errors.WithStack(err)
+	}
+
+	return output, nil
 }
 
-type VrfOutput [32]byte
+type VrfOutput [VrfOutputSize]byte

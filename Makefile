@@ -13,6 +13,14 @@ lint:
 test:
 	go test -v ./...
 
+.PHONY: build-rust
+build-rust:
+	cargo build --release --manifest-path rust/bandersnatch-ring-vrf/Cargo.toml
+
+.PHONY: cbindgen
+cbindgen:
+	cd ./rust/bandersnatch-ring-vrf && cbindgen --config cbindgen.toml --crate bandersnatch-ring-vrf --output include/bandersnatch-ring-vrf.h
+
 .PHONY: build
-build:
+build: build-rust cbindgen
 	GOOS=${GOOS} GOARCH=${GOARCH} go build -o gojam ./cmd/main.go

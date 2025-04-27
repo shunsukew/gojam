@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"sort"
 
+	"github.com/docknetwork/scale-codec-go/codec"
 	"github.com/pkg/errors"
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/internal/validator/keys"
-	"github.com/shunsukew/gojam/pkg/codec"
 	"github.com/shunsukew/gojam/pkg/common"
 	"github.com/shunsukew/gojam/pkg/crypto/bandersnatch"
 	"golang.org/x/crypto/blake2b"
@@ -18,6 +18,8 @@ const (
 	MaxTicketEntryIndex     = 1 // entry index should be 0 or 1.
 	MaxTicketsInAccumulator = jamtime.TimeSlotsPerEpoch
 	MaxTicketsInExtrinsic   = 16 // K: The number of tickets in an extrinsic.
+
+	JamTicketSeal = "jam_ticket_seal"
 )
 
 type SealingKeySeriesKind interface {
@@ -51,8 +53,8 @@ func (tickets Tickets) Sort() {
 }
 
 type TicketProof struct {
-	EntryIndex  uint8                 // r: r ∈ NumN.
-	TicketProof bandersnatch.VrfProof // p: p ∈ F ̄[]γz ⟨XT ⌢ η2′ ++ r⟩
+	EntryIndex  uint8                  // r: r ∈ NumN.
+	TicketProof bandersnatch.Signature // p: p ∈ F ̄[]γz ⟨XT ⌢ η2′ ++ r⟩
 }
 
 type FallbackKeys [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey
@@ -61,7 +63,7 @@ func (fk FallbackKeys) SealingKeySeries() {}
 
 type SafroleState struct {
 	PendingValidators  [common.NumOfValidators]keys.ValidatorKey // γk: the set of keys which will be active in the "next" epoch and which determine the Bandersnatch ring root (EpochRoot) which authorizes tickets into the sealing-key contest for the "next" epoch.
-	EpochRoot          bandersnatch.RingRoot                     // γz (γz∈YR): a Bandersnatch ring root composed with the one Bandersnatch key of each of the "next" epoch’s validators
+	EpochRoot          bandersnatch.RingCommitment               // γz (γz∈YR): a Bandersnatch ring root composed with the one Bandersnatch key of each of the "next" epoch’s validators
 	SealingKeySeries   SealingKeySeriesKind                      // γs: the "current" epoch’s slot-sealer series, which is either a full complement of E tickets or, in the case of a fallback mode, a series of E Bandersnatch keys.
 	TicketsAccumulator Tickets                                   // γa: the ticket accumulator, a series of highest scoring ticket identifiers to be used for the "next" epoch.
 }
@@ -70,7 +72,7 @@ func (s *SafroleState) IsTicketAccumulatorFull() bool {
 	return len(s.TicketsAccumulator) == MaxTicketsInAccumulator
 }
 
-func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof) error {
+func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof, priorEpochRoot bandersnatch.RingCommitment, entropy common.Hash) error {
 	if len(ticketProofs) == 0 {
 		return nil
 	}
@@ -90,8 +92,14 @@ func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof) error {
 			return errors.WithMessage(ErrInvalidTicketSubmissions, "ticket entry index is invalid")
 		}
 
-		// TODO: Implement the logic to verify the ticket proof and get output hash
-		vrfOutput := ticketProof.TicketProof.Output()
+		vrfOutput, err := ticketProof.TicketProof.Verify(
+			buildTicketSealInput(entropy, ticketProof.EntryIndex),
+			[]byte{},
+			priorEpochRoot,
+		)
+		if err != nil {
+			return errors.WithStack(err)
+		}
 
 		if _, found := priorAccumulatedTicketIDs[vrfOutput]; found {
 			return errors.WithMessagef(ErrInvalidTicketSubmissions, "ticke already exists in accumulator")
@@ -109,7 +117,7 @@ func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof) error {
 		return errors.WithMessage(ErrInvalidTicketSubmissions, "submitted tickets are not sorted or have duplicates")
 	}
 
-	newTicketsAccumulator := make([]Ticket, 0, len(s.TicketsAccumulator)+len(newTickets))
+	newTicketsAccumulator := make([]Ticket, len(s.TicketsAccumulator)+len(newTickets))
 	copy(newTicketsAccumulator, s.TicketsAccumulator)
 	copy(newTicketsAccumulator[len(s.TicketsAccumulator):], newTickets)
 
@@ -132,16 +140,29 @@ func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof) error {
 	return nil
 }
 
+func buildTicketSealInput(entropy common.Hash, entryIndex uint8) []byte {
+	data := []byte(JamTicketSeal)
+	data = append(data, entropy[:]...)
+	data = append(data, byte(entryIndex))
+	return data
+}
+
 func (s *SafroleState) ResetTicketsAccumulator() {
 	s.TicketsAccumulator = make([]Ticket, 0, MaxTicketsInAccumulator)
 }
 
 func (s *SafroleState) ComputeRingRoot() error {
-	// TODO: Implement the logic to compute the Bandersnatch ring root
+	publicKeys := make([]bandersnatch.PublicKey, len(s.PendingValidators))
+	for i, validator := range s.PendingValidators {
+		publicKeys[i] = validator.BandersnatchPublicKey
+	}
 
-	// calcurate ring by using pending validators keys
+	ringCommitment, err := bandersnatch.NewRingCommitment(publicKeys)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
-	// s.EpochRoot = bandersnatch.RingRoot{}
+	s.EpochRoot = ringCommitment
 
 	return nil
 }
@@ -169,18 +190,25 @@ func FallbackKeysSequence(entropy common.Hash, validatorKeys []keys.ValidatorKey
 	numOfValidatorKeys := uint32(len(validatorKeys))
 	fallbackKeys := FallbackKeys{}
 	for i := range len(fallbackKeys) {
-		iBytes, err := codec.Encode(uint32(i))
+		// TODO: Replace to own JAM codec implementation
+		fallbackKeyIndexBytes, err := codec.IntToBytes(uint32(i))
 		if err != nil {
 			return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, err
 		}
 
-		hash := blake2b.Sum256(append(entropy[:], iBytes...))
+		hash := blake2b.Sum256(append(entropy[:], fallbackKeyIndexBytes.GetAll()...))
 
 		var num uint32
-		err = codec.Decode(hash[:4], &num)
+		// TODO: Replace to own JAM codec implementation
+		bytes, err := codec.NewBytes(hash[4:])
 		if err != nil {
 			return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, err
 		}
+		decodedU32Num, err := bytes.ToUint32()
+		if err != nil {
+			return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, err
+		}
+		num = uint32(decodedU32Num)
 
 		fallbackKeys[i] = validatorKeys[num%numOfValidatorKeys].BandersnatchPublicKey
 	}

@@ -1,0 +1,16 @@
+language = "C"
+include_version = false
+pragma_once = true
+
+[parse]
+parse_deps = false
+clean = true
+
+[export]
+include = [
+    "new_secret_from_seed",
+    "new_public_key_from_secret",
+    "new_ring_commitment",
+    "ring_vrf_sign",
+    "ring_vrf_verify",
+]

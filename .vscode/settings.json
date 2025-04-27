@@ -1,0 +1,9 @@
+{
+  // Enable build tags for cgo
+  "go.buildTags": "cgo",
+
+  // Ensure the Go language server uses the correct environment
+  "go.toolsEnvVars": {
+    "CGO_ENABLED": "1"
+  }
+}
