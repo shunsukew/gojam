@@ -38,7 +38,8 @@ func TestRingVRFSignAndVerify(t *testing.T) {
 	}
 }
 
-func TestRingVRFOutputsFromDifferentAuxDataAreSame(t *testing.T) {
+// Test auxiliary data doesn't affect the output
+func TestRingVRFOutputs(t *testing.T) {
 	ringPubkeys := make([]PublicKey, 3)
 	proverIndex := uint8(0)
 	proverSecret, err := newSecretFromSeed([]byte("prover secret"))
@@ -60,8 +61,6 @@ func TestRingVRFOutputsFromDifferentAuxDataAreSame(t *testing.T) {
 		t.Fatalf("failed to create ring commitment: %v", err)
 	}
 
-	fmt.Println("Commitment:", commitment)
-
 	signature1, err := sign(ringPubkeys, proverIndex, proverSecret, input, auxData1)
 	if err != nil {
 		t.Fatalf("failed to sign with auxData1: %v", err)
@@ -71,9 +70,6 @@ func TestRingVRFOutputsFromDifferentAuxDataAreSame(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to sign with auxData2: %v", err)
 	}
-
-	fmt.Println("Signature 1:", signature1)
-	fmt.Println("Signature 2:", signature2)
 
 	// Verify the signatures
 	output1, err := verify(input, auxData1, commitment, signature1)
