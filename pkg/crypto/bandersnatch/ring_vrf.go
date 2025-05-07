@@ -1,5 +1,3 @@
-//go:build cgo
-
 package bandersnatch
 
 // #cgo pkg-config: bandersnatch-ring-vrf
@@ -8,7 +6,6 @@ package bandersnatch
 import "C"
 
 import (
-	"fmt"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -22,9 +19,6 @@ func newSecretFromSeed(seed []byte) (PrivateKey, error) {
 		C.size_t(len(seed)),
 		(*C.uchar)(unsafe.Pointer(&secret[0])),
 	)
-
-	fmt.Println("HERE")
-	fmt.Println(ok)
 
 	if !ok {
 		return secret, errors.New("failed to create secret from seed")
@@ -83,6 +77,11 @@ func sign(
 ) (Signature, error) {
 	var signature Signature
 
+	// auxData can be empty, but it must be passed as a slice of length 1
+	if len(auxData) == 0 {
+		auxData = make([]byte, 1)
+	}
+
 	ok := C.ring_vrf_sign(
 		(*[PublicKeySize]C.uchar)(unsafe.Pointer(&ringPubkeys[0])),
 		C.size_t(len(ringPubkeys)),
@@ -112,6 +111,11 @@ func verify(
 	ringProof Signature,
 ) (VrfOutput, error) {
 	var output VrfOutput
+
+	// auxData can be empty, but we must pass a valid pointer
+	if len(auxData) == 0 {
+		auxData = make([]byte, 1)
+	}
 
 	ok := C.ring_vrf_verify(
 		(*C.uchar)(unsafe.Pointer(&input[0])),

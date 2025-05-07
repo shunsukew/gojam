@@ -10,10 +10,10 @@ import (
 )
 
 type ValidatorState struct {
-	SafroleState       safrole.SafroleState                      // γ
-	StagingValidators  [common.NumOfValidators]keys.ValidatorKey // ι
-	ActiveValidators   [common.NumOfValidators]keys.ValidatorKey // κ
-	ArchivedValidators [common.NumOfValidators]keys.ValidatorKey // λ
+	SafroleState       safrole.SafroleState                       // γ
+	StagingValidators  *[common.NumOfValidators]keys.ValidatorKey // ι
+	ActiveValidators   *[common.NumOfValidators]keys.ValidatorKey // κ
+	ArchivedValidators *[common.NumOfValidators]keys.ValidatorKey // λ
 }
 
 // Should be invoked when e' > e

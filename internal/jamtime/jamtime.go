@@ -6,9 +6,8 @@ import "time"
 var JAMCommonEra = time.Date(2025, time.January, 1, 12, 0, 0, 0, time.UTC)
 
 const (
-	TimeSlotsPerEpoch = 600                                  // E
-	TimeSlotDuration  = 6 * time.Second                      // P
-	EpochDuration     = TimeSlotsPerEpoch * TimeSlotDuration // E * P (= 3600)
+	TimeSlotDuration = 6 * time.Second                      // P
+	EpochDuration    = TimeSlotsPerEpoch * TimeSlotDuration // E * P (= 3600)
 
 	TicketSubmissionDeadline = 500 // Y
 )

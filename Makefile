@@ -11,7 +11,16 @@ lint:
 
 .PHONY: test
 test:
-	go test -v ./...
+	go test -v ./internal/...
+	go test -v ./pkg/...
+
+.PHONY: tiny-integration
+tiny-integration:
+	go test -tags=tiny -v ./test/...
+
+.PHONY: full-integration
+full-integration:
+	go test -tags=full -v ./test/...
 
 .PHONY: build-rust
 build-rust:

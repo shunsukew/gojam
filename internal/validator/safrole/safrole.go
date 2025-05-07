@@ -62,10 +62,10 @@ type FallbackKeys [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey
 func (fk FallbackKeys) SealingKeySeries() {}
 
 type SafroleState struct {
-	PendingValidators  [common.NumOfValidators]keys.ValidatorKey // γk: the set of keys which will be active in the "next" epoch and which determine the Bandersnatch ring root (EpochRoot) which authorizes tickets into the sealing-key contest for the "next" epoch.
-	EpochRoot          bandersnatch.RingCommitment               // γz (γz∈YR): a Bandersnatch ring root composed with the one Bandersnatch key of each of the "next" epoch’s validators
-	SealingKeySeries   SealingKeySeriesKind                      // γs: the "current" epoch’s slot-sealer series, which is either a full complement of E tickets or, in the case of a fallback mode, a series of E Bandersnatch keys.
-	TicketsAccumulator Tickets                                   // γa: the ticket accumulator, a series of highest scoring ticket identifiers to be used for the "next" epoch.
+	PendingValidators  *[common.NumOfValidators]keys.ValidatorKey // γk: the set of keys which will be active in the "next" epoch and which determine the Bandersnatch ring root (EpochRoot) which authorizes tickets into the sealing-key contest for the "next" epoch.
+	EpochRoot          bandersnatch.RingCommitment                // γz (γz∈YR): a Bandersnatch ring root composed with the one Bandersnatch key of each of the "next" epoch’s validators
+	SealingKeySeries   SealingKeySeriesKind                       // γs: the "current" epoch’s slot-sealer series, which is either a full complement of E tickets or, in the case of a fallback mode, a series of E Bandersnatch keys.
+	TicketsAccumulator Tickets                                    // γa: the ticket accumulator, a series of highest scoring ticket identifiers to be used for the "next" epoch.
 }
 
 func (s *SafroleState) IsTicketAccumulatorFull() bool {
@@ -191,12 +191,17 @@ func FallbackKeysSequence(entropy common.Hash, validatorKeys []keys.ValidatorKey
 	fallbackKeys := FallbackKeys{}
 	for i := range len(fallbackKeys) {
 		// TODO: Replace to own JAM codec implementation
-		fallbackKeyIndexBytes, err := codec.IntToBytes(uint32(i))
-		if err != nil {
-			return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, err
+		fallbackKeyIndexBytes := make([]byte, 4)
+		var err error
+		if i != 0 {
+			offsetBytes, err := codec.IntToBytes(uint32(i))
+			if err != nil {
+				return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, err
+			}
+			fallbackKeyIndexBytes = offsetBytes.GetAll()
 		}
 
-		hash := blake2b.Sum256(append(entropy[:], fallbackKeyIndexBytes.GetAll()...))
+		hash := blake2b.Sum256(append(entropy[:], fallbackKeyIndexBytes...))
 
 		var num uint32
 		// TODO: Replace to own JAM codec implementation
