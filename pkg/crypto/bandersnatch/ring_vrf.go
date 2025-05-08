@@ -11,6 +11,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+func init() {
+	// Initialize the library
+	if ok := C.init_ring_size(C.size_t(RING_SIZE)); !ok {
+		panic("failed to initialize bandersnatch ring vrf")
+	}
+}
+
+func ringSize() uint {
+	return uint(C.get_ring_size())
+}
+
 func newSecretFromSeed(seed []byte) (PrivateKey, error) {
 	var secret PrivateKey
 

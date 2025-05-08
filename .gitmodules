@@ -1,3 +1,6 @@
 [submodule "@jamtestvectors"]
 	path = @jamtestvectors
 	url = https://github.com/w3f/jamtestvectors
+[submodule "@jamtestvectors-davxy"]
+	path = @jamtestvectors-davxy
+	url = https://github.com/davxy/jam-test-vectors
