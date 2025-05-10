@@ -110,9 +110,9 @@ func TestSafroleAndValidatorStateTransition(t *testing.T) {
 
 				var expectedWinningTicketMarker *block.WinningTicketMarker
 				if expectedOutput.Ok.TicketsMark != nil {
-					tickets := make([]safrole.Ticket, len(expectedOutput.Ok.TicketsMark))
+					tickets := make([]*safrole.Ticket, len(expectedOutput.Ok.TicketsMark))
 					for i, ticket := range expectedOutput.Ok.TicketsMark {
-						tickets[i] = safrole.Ticket{
+						tickets[i] = &safrole.Ticket{
 							TicketID:   ticket.ID,
 							EntryIndex: ticket.Attempt,
 						}
@@ -156,36 +156,36 @@ func TestSafroleAndValidatorStateTransition(t *testing.T) {
 func toValidatorState(
 	state State,
 ) (*validator.ValidatorState, error) {
-	pendingValidators := [common.NumOfValidators]keys.ValidatorKey{}
+	pendingValidators := [common.NumOfValidators]*keys.ValidatorKey{}
 	for i, validator := range state.GammaK {
-		pendingValidators[i] = keys.ValidatorKey{
+		pendingValidators[i] = &keys.ValidatorKey{
 			BandersnatchPublicKey: validator.Bandersnatch,
 			Ed25519PublicKey:      hexToEd25519PublicKey(validator.Ed25519),
 			BLSKey:                validator.Bls,
 			Metadata:              [keys.ValidatorKeyMetadataSize]byte(common.FromHex(validator.Metadata)),
 		}
 	}
-	stagingValidators := [common.NumOfValidators]keys.ValidatorKey{}
+	stagingValidators := [common.NumOfValidators]*keys.ValidatorKey{}
 	for i, validator := range state.Iota {
-		stagingValidators[i] = keys.ValidatorKey{
+		stagingValidators[i] = &keys.ValidatorKey{
 			BandersnatchPublicKey: validator.Bandersnatch,
 			Ed25519PublicKey:      hexToEd25519PublicKey(validator.Ed25519),
 			BLSKey:                validator.Bls,
 			Metadata:              [keys.ValidatorKeyMetadataSize]byte(common.FromHex(validator.Metadata)),
 		}
 	}
-	activeValidators := [common.NumOfValidators]keys.ValidatorKey{}
+	activeValidators := [common.NumOfValidators]*keys.ValidatorKey{}
 	for i, validator := range state.Kappa {
-		activeValidators[i] = keys.ValidatorKey{
+		activeValidators[i] = &keys.ValidatorKey{
 			BandersnatchPublicKey: validator.Bandersnatch,
 			Ed25519PublicKey:      hexToEd25519PublicKey(validator.Ed25519),
 			BLSKey:                validator.Bls,
 			Metadata:              [keys.ValidatorKeyMetadataSize]byte(common.FromHex(validator.Metadata)),
 		}
 	}
-	archivedValidators := [common.NumOfValidators]keys.ValidatorKey{}
+	archivedValidators := [common.NumOfValidators]*keys.ValidatorKey{}
 	for i, validator := range state.Lambda {
-		archivedValidators[i] = keys.ValidatorKey{
+		archivedValidators[i] = &keys.ValidatorKey{
 			BandersnatchPublicKey: validator.Bandersnatch,
 			Ed25519PublicKey:      hexToEd25519PublicKey(validator.Ed25519),
 			BLSKey:                validator.Bls,
@@ -196,9 +196,9 @@ func toValidatorState(
 	// sealing key series
 	var sealingKeySeries safrole.SealingKeySeriesKind
 	if len(state.GammaS.Tickets) != 0 {
-		tickets := make([]safrole.Ticket, len(state.GammaS.Tickets))
+		tickets := make([]*safrole.Ticket, len(state.GammaS.Tickets))
 		for i, ticket := range state.GammaS.Tickets {
-			tickets[i] = safrole.Ticket{
+			tickets[i] = &safrole.Ticket{
 				TicketID:   ticket.ID,
 				EntryIndex: ticket.Attempt,
 			}
@@ -210,12 +210,12 @@ func toValidatorState(
 		for i, key := range state.GammaS.Keys {
 			fallbackKeys[i] = bandersnatch.PublicKey(common.FromHex(key))
 		}
-		sealingKeySeries = fallbackKeys
+		sealingKeySeries = &fallbackKeys
 	}
 
-	ticketAccumulator := make([]safrole.Ticket, len(state.GammaA))
+	ticketAccumulator := make([]*safrole.Ticket, len(state.GammaA))
 	for i, ticket := range state.GammaA {
-		ticketAccumulator[i] = safrole.Ticket{
+		ticketAccumulator[i] = &safrole.Ticket{
 			TicketID:   ticket.ID,
 			EntryIndex: ticket.Attempt,
 		}
@@ -223,13 +223,13 @@ func toValidatorState(
 
 	safroleState := &safrole.SafroleState{
 		PendingValidators:  &pendingValidators,
-		EpochRoot:          state.GammaZ,
+		EpochRoot:          &state.GammaZ,
 		SealingKeySeries:   sealingKeySeries,
 		TicketsAccumulator: ticketAccumulator,
 	}
 
 	return &validator.ValidatorState{
-		SafroleState:       *safroleState,
+		SafroleState:       safroleState,
 		StagingValidators:  &stagingValidators,
 		ActiveValidators:   &activeValidators,
 		ArchivedValidators: &archivedValidators,
