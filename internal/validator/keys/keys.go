@@ -7,10 +7,14 @@ import (
 	"github.com/shunsukew/gojam/pkg/crypto/bls"
 )
 
+const (
+	ValidatorKeyMetadataSize = 128
+)
+
 // Validator keys tuple. Defined as K;blackboard in the Gray Paper
 type ValidatorKey struct {
-	BandersnatchPublicKey bandersnatch.PublicKey // kb
-	Ed25519PublicKey      ed25519.PublicKey      // ke
-	BLSKey                bls.BLSKey             // kbls
-	Metadata              [128]byte              // km
+	BandersnatchPublicKey bandersnatch.PublicKey         // kb
+	Ed25519PublicKey      ed25519.PublicKey              // ke
+	BLSKey                bls.BLSKey                     // kbls
+	Metadata              [ValidatorKeyMetadataSize]byte // km
 }

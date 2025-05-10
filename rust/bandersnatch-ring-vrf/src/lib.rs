@@ -16,15 +16,27 @@ macro_rules! srs_file_path {
     };
 }
 
-const DEFAULT_RING_SIZE: usize = 1023;
+pub const DEFAULT_RING_SIZE: usize = 1023;
 pub const RING_COMMITMENT_SIZE: usize = 144;
 pub const PUBKEY_SIZE: usize = 32;
 pub const SECRET_SIZE: usize = 32;
 pub const RING_VRF_SIGNATURE_SIZE: usize = 784;
 pub const OUTPUT_HASH_SIZE: usize = 32;
 
+static RING_SIZE: OnceLock<usize> = OnceLock::new();
+
+#[no_mangle]
+pub unsafe extern "C" fn init_ring_size(ring_size: size_t) -> bool {
+    let _ = RING_SIZE.set(ring_size);
+    true
+}
+
+#[no_mangle]
+pub extern "C" fn get_ring_size() -> size_t {
+    ring_size()
+}
+
 fn ring_size() -> usize {
-    static RING_SIZE: OnceLock<usize> = OnceLock::new();
     *RING_SIZE.get_or_init(|| DEFAULT_RING_SIZE)
 }
 
@@ -158,7 +170,6 @@ pub unsafe extern "C" fn ring_vrf_sign(
     {
         return false;
     }
-
 
     let ring_pubkeys: &[[u8; PUBKEY_SIZE]] = slice::from_raw_parts(ring_ptr, ring_len as usize);
     let prover_idx = *prover_idx as usize;

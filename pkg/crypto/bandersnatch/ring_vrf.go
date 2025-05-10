@@ -1,5 +1,3 @@
-//go:build cgo
-
 package bandersnatch
 
 // #cgo pkg-config: bandersnatch-ring-vrf
@@ -8,11 +6,22 @@ package bandersnatch
 import "C"
 
 import (
-	"fmt"
 	"unsafe"
 
 	"github.com/pkg/errors"
+	"github.com/shunsukew/gojam/pkg/common"
 )
+
+func init() {
+	// Initialize the library
+	if ok := C.init_ring_size(C.size_t(common.NumOfValidators)); !ok {
+		panic("failed to initialize bandersnatch ring vrf")
+	}
+}
+
+func ringSize() uint {
+	return uint(C.get_ring_size())
+}
 
 func newSecretFromSeed(seed []byte) (PrivateKey, error) {
 	var secret PrivateKey
@@ -22,9 +31,6 @@ func newSecretFromSeed(seed []byte) (PrivateKey, error) {
 		C.size_t(len(seed)),
 		(*C.uchar)(unsafe.Pointer(&secret[0])),
 	)
-
-	fmt.Println("HERE")
-	fmt.Println(ok)
 
 	if !ok {
 		return secret, errors.New("failed to create secret from seed")
@@ -83,6 +89,12 @@ func sign(
 ) (Signature, error) {
 	var signature Signature
 
+	// auxData can be empty, but it must be passed as a slice of length 1
+	auxDataLen := len(auxData)
+	if len(auxData) == 0 {
+		auxData = make([]byte, 1)
+	}
+
 	ok := C.ring_vrf_sign(
 		(*[PublicKeySize]C.uchar)(unsafe.Pointer(&ringPubkeys[0])),
 		C.size_t(len(ringPubkeys)),
@@ -91,7 +103,7 @@ func sign(
 		(*C.uchar)(unsafe.Pointer(&input[0])),
 		C.size_t(len(input)),
 		(*C.uchar)(unsafe.Pointer(&auxData[0])),
-		C.size_t(len(auxData)),
+		C.size_t(auxDataLen),
 		(*C.uchar)(unsafe.Pointer(&signature[0])),
 	)
 	if !ok {
@@ -113,11 +125,17 @@ func verify(
 ) (VrfOutput, error) {
 	var output VrfOutput
 
+	// auxData can be empty, but we must pass a valid pointer
+	auxDataLen := len(auxData)
+	if len(auxData) == 0 {
+		auxData = make([]byte, 1)
+	}
+
 	ok := C.ring_vrf_verify(
 		(*C.uchar)(unsafe.Pointer(&input[0])),
 		C.size_t(len(input)),
 		(*C.uchar)(unsafe.Pointer(&auxData[0])),
-		C.size_t(len(auxData)),
+		C.size_t(auxDataLen),
 		(*C.uchar)(unsafe.Pointer(&commitment[0])),
 		(*C.uchar)(unsafe.Pointer(&ringProof[0])),
 		(*C.uchar)(unsafe.Pointer(&output[0])),

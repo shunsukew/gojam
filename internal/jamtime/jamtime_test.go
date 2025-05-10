@@ -1,3 +1,5 @@
+//go:build !tiny
+
 package jamtime
 
 import (

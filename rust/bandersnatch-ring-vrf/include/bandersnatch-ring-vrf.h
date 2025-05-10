@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define DEFAULT_RING_SIZE 1023
+
 #define RING_COMMITMENT_SIZE 144
 
 #define PUBKEY_SIZE 32
@@ -14,6 +16,10 @@
 #define RING_VRF_SIGNATURE_SIZE 784
 
 #define OUTPUT_HASH_SIZE 32
+
+bool init_ring_size(size_t ring_size);
+
+size_t get_ring_size(void);
 
 bool new_secret_from_seed(const unsigned char *seed_ptr,
                           size_t seed_len,

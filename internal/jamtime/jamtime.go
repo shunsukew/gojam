@@ -6,11 +6,8 @@ import "time"
 var JAMCommonEra = time.Date(2025, time.January, 1, 12, 0, 0, 0, time.UTC)
 
 const (
-	TimeSlotsPerEpoch = 600                                  // E
-	TimeSlotDuration  = 6 * time.Second                      // P
-	EpochDuration     = TimeSlotsPerEpoch * TimeSlotDuration // E * P (= 3600)
-
-	TicketSubmissionDeadline = 500 // Y
+	TimeSlotDuration = 6 * time.Second                      // P
+	EpochDuration    = TimeSlotsPerEpoch * TimeSlotDuration // E * P (= 3600)
 )
 
 type JAMTime struct {
@@ -72,8 +69,8 @@ func (e1 Epoch) After(e2 Epoch) bool {
 	return e1 > e2
 }
 
-func (e1 Epoch) IsNextEpoch(e2 Epoch) bool {
-	return e1+1 == e2
+func (e1 Epoch) IsNextEpochAfter(e2 Epoch) bool {
+	return e1 == e2+1
 }
 
 type TimeSlot uint32

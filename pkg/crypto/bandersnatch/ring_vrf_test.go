@@ -1,16 +1,22 @@
 package bandersnatch
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/shunsukew/gojam/pkg/common"
 )
+
+func TestRingSize(t *testing.T) {
+	if ringSize() != common.NumOfValidators {
+		t.Fatalf("expected ring size %d, got %d", common.NumOfValidators, ringSize())
+	}
+}
 
 func TestRingVRFSignAndVerify(t *testing.T) {
 	ringPubkeys := make([]PublicKey, 3)
 	proverIndex := uint8(0)
 	proverSecret, err := newSecretFromSeed([]byte("prover secret"))
 	if err != nil {
-		fmt.Println(err)
 		t.Fatalf("failed to create prover secret: %v", err)
 	}
 	proverPubkey, err := newPublicKeyFromSecret(proverSecret)
