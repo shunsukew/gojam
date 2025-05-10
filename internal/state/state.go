@@ -2,6 +2,7 @@ package jamstate
 
 import (
 	"github.com/shunsukew/gojam/internal/entropy"
+	"github.com/shunsukew/gojam/internal/history"
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/internal/validator"
 )
@@ -9,7 +10,7 @@ import (
 // σ ≡ (α,β,γ,δ,η,ι,κ,λ,ρ,τ,φ,χ,ψ,π,θ,ξ)
 type State struct {
 	CoreAuthorizationsPool                               // α: The core αuthorizations pool. Equation 8.1 in Gray Paper.
-	RecentBlocks                                         // β: Information on the most recent βlocks.
+	RecentHistory               history.RecentHistory    // β: Information on the most recent βlocks.
 	Services                                             // δ: The (prior) state of the service accounts.
 	EntropyPool                 entropy.EntropyPool      // η: The eηtropy accumulator and epochal raηdomness.
 	ValidatorState              validator.ValidatorState // (ι, κ, λ): The state of the validators related. & γ: State concerning Safrole. Equation 6.3 in Gray Paper.
@@ -24,8 +25,6 @@ type State struct {
 }
 
 type CoreAuthorizationsPool struct{}
-
-type RecentBlocks struct{}
 
 type Services struct{}
 
