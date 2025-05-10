@@ -68,9 +68,9 @@ func (rc *RingCommitment) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func NewRingCommitment(pubkeys []PublicKey) (RingCommitment, error) {
+func NewRingCommitment(pubkeys []PublicKey) (*RingCommitment, error) {
 	if len(pubkeys) != common.NumOfValidators {
-		return RingCommitment{}, errors.New("invalid number of public keys")
+		return &RingCommitment{}, errors.New("invalid number of public keys")
 	}
 
 	return newRingCommitment(pubkeys)

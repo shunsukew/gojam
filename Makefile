@@ -10,16 +10,16 @@ lint:
 	golangci-lint run --timeout=5m
 
 .PHONY: test
-test:
+test: build
 	go test -v ./internal/...
 	go test -v ./pkg/...
 
 .PHONY: tiny-integration
-tiny-integration:
+tiny-integration: build
 	go test -tags=tiny -v ./test/...
 
 .PHONY: full-integration
-full-integration:
+full-integration: build
 	go test -tags=full -v ./test/...
 
 .PHONY: build-rust

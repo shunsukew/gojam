@@ -229,7 +229,7 @@ func toValidatorState(
 	}
 
 	return &validator.ValidatorState{
-		SafroleState:       *safroleState,
+		SafroleState:       safroleState,
 		StagingValidators:  &stagingValidators,
 		ActiveValidators:   &activeValidators,
 		ArchivedValidators: &archivedValidators,

@@ -25,3 +25,9 @@ jobs:
         run: cargo install --force cbindgen
       - name: Run Go Build
         run: make build
+      - name: Run unit tests
+        run: make test
+      - name: Run tiny spec integration tests
+        run: make tiny-integration
+      - name: Run full spec integration tests
+        run: make full-integration

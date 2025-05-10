@@ -162,7 +162,7 @@ func (s *SafroleState) ComputeRingRoot() error {
 		return errors.WithStack(err)
 	}
 
-	s.EpochRoot = &ringCommitment
+	s.EpochRoot = ringCommitment
 
 	return nil
 }
