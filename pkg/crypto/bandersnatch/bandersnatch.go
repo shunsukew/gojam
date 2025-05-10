@@ -78,7 +78,7 @@ func NewRingCommitment(pubkeys []PublicKey) (RingCommitment, error) {
 
 type Signature [784]byte
 
-func (proof Signature) Verify(input, auxData []byte, ringCommitment RingCommitment) (VrfOutput, error) {
+func (proof Signature) Verify(input, auxData []byte, ringCommitment *RingCommitment) (VrfOutput, error) {
 	output, err := verify(input, auxData, ringCommitment, proof)
 	if err != nil {
 		return VrfOutput{}, err

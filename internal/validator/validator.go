@@ -10,10 +10,10 @@ import (
 )
 
 type ValidatorState struct {
-	SafroleState       safrole.SafroleState                       // γ
-	StagingValidators  *[common.NumOfValidators]keys.ValidatorKey // ι
-	ActiveValidators   *[common.NumOfValidators]keys.ValidatorKey // κ
-	ArchivedValidators *[common.NumOfValidators]keys.ValidatorKey // λ
+	SafroleState       safrole.SafroleState                        // γ
+	StagingValidators  *[common.NumOfValidators]*keys.ValidatorKey // ι
+	ActiveValidators   *[common.NumOfValidators]*keys.ValidatorKey // κ
+	ArchivedValidators *[common.NumOfValidators]*keys.ValidatorKey // λ
 }
 
 // Should be invoked when e' > e
@@ -44,7 +44,7 @@ func (vs *ValidatorState) nullifyOffenders(offenders []ed25519.PublicKey) {
 	for i, validator := range vs.SafroleState.PendingValidators {
 		if _, found := offendersMap[[ed25519.PublicKeySize]byte(validator.Ed25519PublicKey)]; found {
 			ed25519Pubkey := [ed25519.PublicKeySize]byte{}
-			vs.SafroleState.PendingValidators[i] = keys.ValidatorKey{
+			vs.SafroleState.PendingValidators[i] = &keys.ValidatorKey{
 				Ed25519PublicKey: ed25519.PublicKey(ed25519Pubkey[:]),
 			}
 		}

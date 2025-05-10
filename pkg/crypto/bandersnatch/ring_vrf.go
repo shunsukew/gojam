@@ -120,7 +120,7 @@ func sign(
 func verify(
 	input []byte,
 	auxData []byte,
-	commitment RingCommitment,
+	commitment *RingCommitment,
 	ringProof Signature,
 ) (VrfOutput, error) {
 	var output VrfOutput

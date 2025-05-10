@@ -100,7 +100,7 @@ func (s *ValidatorState) Update(
 	return entropyPool, epockMarker, winningTicketMarker, nil
 }
 
-func newEpochMarker(entropyPool *entropy.EntropyPool, validatorKeys *[common.NumOfValidators]keys.ValidatorKey) *block.EpochMarker {
+func newEpochMarker(entropyPool *entropy.EntropyPool, validatorKeys *[common.NumOfValidators]*keys.ValidatorKey) *block.EpochMarker {
 	epochMarker := &block.EpochMarker{
 		Entropies: struct {
 			Next    common.Hash // μ0
