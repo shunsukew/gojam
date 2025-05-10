@@ -56,7 +56,7 @@ func (s *ValidatorState) Update(
 
 		// (6.27)
 		// He ≡ (η0, η1, [kb ∣k <− γk']) if e' > e
-		epockMarker = newEpochMarker(&prevEntropyPool, s.ActiveValidators)
+		epockMarker = newEpochMarker(&prevEntropyPool, s.SafroleState.PendingValidators)
 
 		// Determine sealing key series
 		// Gray paper equation (6.24)

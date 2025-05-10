@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/shunsukew/gojam/internal/block"
 	e "github.com/shunsukew/gojam/internal/entropy"
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/internal/validator"
@@ -48,10 +48,6 @@ func TestSafroleAndValidatorStateTransition(t *testing.T) {
 		for _, filePath := range filePaths {
 			testCase := fmt.Sprintf("Test %s", filepath.Base(filePath))
 			t.Run(testCase, func(t *testing.T) {
-				if !strings.Contains(filePath, "publish-tickets-with-mark-5") {
-					t.Skipf("skipping test vector file: %s", filePath)
-				}
-
 				file, err := os.ReadFile(filePath)
 				if err != nil {
 					require.NoErrorf(t, err, "failed to read test vector file: %s", filePath)
@@ -93,8 +89,40 @@ func TestSafroleAndValidatorStateTransition(t *testing.T) {
 					require.NoError(t, err, "failed to create expected validator state")
 				}
 
-				_, _, _, err = validatorState.Update(currentTimeSlot, prevTimeSlot, entropy, entropyPool, tickets, offenders)
 				expectedOutput := testVector.Output
+				var expectedEpochMarker *block.EpochMarker
+				if expectedOutput.Ok.EpochMark != nil {
+					bandersnatchKeys := [common.NumOfValidators]bandersnatch.PublicKey{}
+					for i, validator := range expectedOutput.Ok.EpochMark.Validators {
+						bandersnatchKeys[i] = bandersnatch.PublicKey(common.FromHex(validator.Bandersnatch))
+					}
+					expectedEpochMarker = &block.EpochMarker{
+						Entropies: struct {
+							Next    common.Hash
+							Current common.Hash
+						}{
+							Next:    expectedOutput.Ok.EpochMark.Entropy,
+							Current: expectedOutput.Ok.EpochMark.TicketEntropy,
+						},
+						BandersnatchPubKeys: bandersnatchKeys,
+					}
+				}
+
+				var expectedWinningTicketMarker *block.WinningTicketMarker
+				if expectedOutput.Ok.TicketsMark != nil {
+					tickets := make([]safrole.Ticket, len(expectedOutput.Ok.TicketsMark))
+					for i, ticket := range expectedOutput.Ok.TicketsMark {
+						tickets[i] = safrole.Ticket{
+							TicketID:   ticket.ID,
+							EntryIndex: ticket.Attempt,
+						}
+					}
+					expectedWinningTicketMarker = &block.WinningTicketMarker{
+						Tickets: safrole.Tickets(tickets),
+					}
+				}
+
+				_, epochMarker, winningTicketMarker, err := validatorState.Update(currentTimeSlot, prevTimeSlot, entropy, entropyPool, tickets, offenders)
 				if expectedOutput.Err != "" {
 					require.Error(t, err, "error expected: %v", err)
 				} else {
@@ -112,14 +140,14 @@ func TestSafroleAndValidatorStateTransition(t *testing.T) {
 				require.Equal(t, expectedValidatorState.ActiveValidators, validatorState.ActiveValidators)
 				require.Equal(t, expectedValidatorState.ArchivedValidators, validatorState.ArchivedValidators)
 
-				// Entity check
-				// require.Equal(t, validatorState, expectedValidatorState)
+				// Entire state check
+				require.Equal(t, validatorState, expectedValidatorState)
 
 				// Epoch marker check
-				// TODO: Check epoch marker
+				require.Equal(t, expectedEpochMarker, epochMarker)
 
 				// Winning ticket marker check
-				// TODO: Check winning ticket marker
+				require.Equal(t, expectedWinningTicketMarker, winningTicketMarker)
 			})
 		}
 	})
@@ -262,13 +290,14 @@ type Output struct {
 }
 
 type Ok struct {
-	EpochMark   EpochMarker `json:"epoch_mark"`
-	TicketsMark []Ticket    `json:"tickets_mark"`
+	EpochMark   *EpochMarker `json:"epoch_mark"`
+	TicketsMark []Ticket     `json:"tickets_mark"`
 }
 
 type EpochMarker struct {
-	Entropy    common.Hash            `json:"entropy"`
-	Validators []EpochMarkerValidator `json:"validators"`
+	Entropy       common.Hash            `json:"entropy"`
+	TicketEntropy common.Hash            `json:"tickets_entropy"`
+	Validators    []EpochMarkerValidator `json:"validators"`
 }
 
 type EpochMarkerValidator struct {
