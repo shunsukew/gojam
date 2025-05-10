@@ -10,32 +10,32 @@ import (
 func TestSortedAndNonDuplicates(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    []Ticket
+		input    []*Ticket
 		expected bool
 	}{
 		{
 			name:     "Sorted and non-duplicate tickets",
-			input:    []Ticket{{0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{2}}, {0, bandersnatch.VrfOutput{3}}, {1, bandersnatch.VrfOutput{4}}},
+			input:    []*Ticket{{0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{2}}, {0, bandersnatch.VrfOutput{3}}, {1, bandersnatch.VrfOutput{4}}},
 			expected: true,
 		},
 		{
 			name:     "Not sorted tickets",
-			input:    []Ticket{{0, bandersnatch.VrfOutput{2}}, {1, bandersnatch.VrfOutput{1}}, {0, bandersnatch.VrfOutput{3}}, {1, bandersnatch.VrfOutput{4}}},
+			input:    []*Ticket{{0, bandersnatch.VrfOutput{2}}, {1, bandersnatch.VrfOutput{1}}, {0, bandersnatch.VrfOutput{3}}, {1, bandersnatch.VrfOutput{4}}},
 			expected: false,
 		},
 		{
 			name:     "Duplicate tickets",
-			input:    []Ticket{{0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{2}}, {1, bandersnatch.VrfOutput{1}}, {0, bandersnatch.VrfOutput{4}}},
+			input:    []*Ticket{{0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{2}}, {1, bandersnatch.VrfOutput{1}}, {0, bandersnatch.VrfOutput{4}}},
 			expected: false,
 		},
 		{
 			name:     "Empty input",
-			input:    []Ticket{},
+			input:    []*Ticket{},
 			expected: true,
 		},
 		{
 			name:     "Single ticket",
-			input:    []Ticket{{0, bandersnatch.VrfOutput{1}}},
+			input:    []*Ticket{{0, bandersnatch.VrfOutput{1}}},
 			expected: true,
 		},
 	}
@@ -53,28 +53,28 @@ func TestSortedAndNonDuplicates(t *testing.T) {
 func TestSortTickets(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    []Ticket
-		expected []Ticket
+		input    []*Ticket
+		expected []*Ticket
 	}{
 		{
 			name:     "Unsorted tickets",
-			input:    []Ticket{{1, bandersnatch.VrfOutput{2}}, {0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{4}}, {0, bandersnatch.VrfOutput{3}}},
-			expected: []Ticket{{0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{2}}, {0, bandersnatch.VrfOutput{3}}, {1, bandersnatch.VrfOutput{4}}},
+			input:    []*Ticket{{1, bandersnatch.VrfOutput{2}}, {0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{4}}, {0, bandersnatch.VrfOutput{3}}},
+			expected: []*Ticket{{0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{2}}, {0, bandersnatch.VrfOutput{3}}, {1, bandersnatch.VrfOutput{4}}},
 		},
 		{
 			name:     "Already sorted tickets",
-			input:    []Ticket{{0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{2}}, {0, bandersnatch.VrfOutput{3}}, {1, bandersnatch.VrfOutput{4}}},
-			expected: []Ticket{{0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{2}}, {0, bandersnatch.VrfOutput{3}}, {1, bandersnatch.VrfOutput{4}}},
+			input:    []*Ticket{{0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{2}}, {0, bandersnatch.VrfOutput{3}}, {1, bandersnatch.VrfOutput{4}}},
+			expected: []*Ticket{{0, bandersnatch.VrfOutput{1}}, {1, bandersnatch.VrfOutput{2}}, {0, bandersnatch.VrfOutput{3}}, {1, bandersnatch.VrfOutput{4}}},
 		},
 		{
 			name:     "Empty input",
-			input:    []Ticket{},
-			expected: []Ticket{},
+			input:    []*Ticket{},
+			expected: []*Ticket{},
 		},
 		{
 			name:     "Single ticket",
-			input:    []Ticket{{0, bandersnatch.VrfOutput{1}}},
-			expected: []Ticket{{0, bandersnatch.VrfOutput{1}}},
+			input:    []*Ticket{{0, bandersnatch.VrfOutput{1}}},
+			expected: []*Ticket{{0, bandersnatch.VrfOutput{1}}},
 		},
 	}
 

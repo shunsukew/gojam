@@ -68,9 +68,9 @@ func (rc *RingCommitment) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func NewRingCommitment(pubkeys []PublicKey) (RingCommitment, error) {
+func NewRingCommitment(pubkeys []PublicKey) (*RingCommitment, error) {
 	if len(pubkeys) != common.NumOfValidators {
-		return RingCommitment{}, errors.New("invalid number of public keys")
+		return &RingCommitment{}, errors.New("invalid number of public keys")
 	}
 
 	return newRingCommitment(pubkeys)
@@ -78,7 +78,7 @@ func NewRingCommitment(pubkeys []PublicKey) (RingCommitment, error) {
 
 type Signature [784]byte
 
-func (proof Signature) Verify(input, auxData []byte, ringCommitment RingCommitment) (VrfOutput, error) {
+func (proof Signature) Verify(input, auxData []byte, ringCommitment *RingCommitment) (VrfOutput, error) {
 	output, err := verify(input, auxData, ringCommitment, proof)
 	if err != nil {
 		return VrfOutput{}, err

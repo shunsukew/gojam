@@ -61,7 +61,7 @@ func newPublicKeyFromSecret(secret PrivateKey) (PublicKey, error) {
 	return publicKey, nil
 }
 
-func newRingCommitment(ringPubkeys []PublicKey) (RingCommitment, error) {
+func newRingCommitment(ringPubkeys []PublicKey) (*RingCommitment, error) {
 	var commitment RingCommitment
 
 	ok := C.new_ring_commitment(
@@ -70,14 +70,14 @@ func newRingCommitment(ringPubkeys []PublicKey) (RingCommitment, error) {
 		(*C.uchar)(unsafe.Pointer(&commitment[0])),
 	)
 	if !ok {
-		return commitment, errors.New("failed to create ring verifier commitment")
+		return &commitment, errors.New("failed to create ring verifier commitment")
 	}
 
 	if unsafe.Sizeof(commitment) != RingCommitmentSize {
-		return commitment, errors.New("commitment buffer size mismatch")
+		return &commitment, errors.New("commitment buffer size mismatch")
 	}
 
-	return commitment, nil
+	return &commitment, nil
 }
 
 func sign(
@@ -120,7 +120,7 @@ func sign(
 func verify(
 	input []byte,
 	auxData []byte,
-	commitment RingCommitment,
+	commitment *RingCommitment,
 	ringProof Signature,
 ) (VrfOutput, error) {
 	var output VrfOutput

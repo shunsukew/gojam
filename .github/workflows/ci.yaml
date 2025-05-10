@@ -15,13 +15,35 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
+    env:
+      PKG_CONFIG_PATH: ${{ github.workspace }}:${{ github.workspace }}/bandersnatch-ring-vrf.pc
+      CGO_ENABLED: 1
     steps:
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev build-essential clang
+
       - uses: actions/checkout@v4
+        with:
+          submodules: true 
+
       - uses: actions/setup-go@v4
         with:
           go-version-file: './go.mod'
           cache: false
+
       - name: Install cbindgen
         run: cargo install --force cbindgen
+
       - name: Run Go Build
         run: make build
+
+      - name: Run unit tests
+        run: make test
+
+      - name: Run tiny spec integration tests
+        run: make tiny-integration
+
+      - name: Run full spec integration tests
+        run: make full-integration
