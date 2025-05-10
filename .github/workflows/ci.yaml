@@ -21,7 +21,7 @@ jobs:
         with:
           go-version-file: './go.mod'
           cache: false
-      - uses: Install cbindgen
+      - name: Install cbindgen
         run: cargo install --force cbindgen
       - name: Run Go Build
         run: make build
