@@ -48,8 +48,8 @@ func TestSafroleAndValidatorStateTransition(t *testing.T) {
 		for _, filePath := range filePaths {
 			testCase := fmt.Sprintf("Test %s", filepath.Base(filePath))
 			t.Run(testCase, func(t *testing.T) {
-				if !strings.Contains(filePath, "enact-epoch-change-with-padding-1") {
-					return
+				if !strings.Contains(filePath, "publish-tickets-with-mark-5") {
+					t.Skipf("skipping test vector file: %s", filePath)
 				}
 
 				file, err := os.ReadFile(filePath)
@@ -94,25 +94,23 @@ func TestSafroleAndValidatorStateTransition(t *testing.T) {
 				}
 
 				_, _, _, err = validatorState.Update(currentTimeSlot, prevTimeSlot, entropy, entropyPool, tickets, offenders)
-				// Check errors
 				expectedOutput := testVector.Output
 				if expectedOutput.Err != "" {
 					require.Error(t, err, "error expected: %v", err)
 				} else {
-					require.NoError(t, err, "error unexpected: %s", expectedOutput.Err)
+					require.NoError(t, err, "error unexpected: %s", err)
 				}
 
 				// Safrole state check
-				require.Equal(t, validatorState.SafroleState.PendingValidators, expectedValidatorState.SafroleState.PendingValidators)
-				require.Equal(t, validatorState.SafroleState.EpochRoot, expectedValidatorState.SafroleState.EpochRoot)
-				// TODO: Fix the sealing key series
-				// require.Equal(t, validatorState.SafroleState.SealingKeySeries, expectedValidatorState.SafroleState.SealingKeySeries)
-				require.Equal(t, validatorState.SafroleState.TicketsAccumulator, expectedValidatorState.SafroleState.TicketsAccumulator)
+				require.Equal(t, expectedValidatorState.SafroleState.PendingValidators, validatorState.SafroleState.PendingValidators)
+				require.Equal(t, expectedValidatorState.SafroleState.EpochRoot, validatorState.SafroleState.EpochRoot)
+				require.Equal(t, expectedValidatorState.SafroleState.SealingKeySeries, validatorState.SafroleState.SealingKeySeries)
+				require.Equal(t, expectedValidatorState.SafroleState.TicketsAccumulator, validatorState.SafroleState.TicketsAccumulator)
 
 				// Validator state check
-				require.Equal(t, validatorState.StagingValidators, expectedValidatorState.StagingValidators)
-				require.Equal(t, validatorState.ActiveValidators, expectedValidatorState.ActiveValidators)
-				require.Equal(t, validatorState.ArchivedValidators, expectedValidatorState.ArchivedValidators)
+				require.Equal(t, expectedValidatorState.StagingValidators, validatorState.StagingValidators)
+				require.Equal(t, expectedValidatorState.ActiveValidators, validatorState.ActiveValidators)
+				require.Equal(t, expectedValidatorState.ArchivedValidators, validatorState.ArchivedValidators)
 
 				// Entity check
 				// require.Equal(t, validatorState, expectedValidatorState)
@@ -128,10 +126,10 @@ func TestSafroleAndValidatorStateTransition(t *testing.T) {
 }
 
 func toValidatorState(
-	preState State,
+	state State,
 ) (*validator.ValidatorState, error) {
 	pendingValidators := [common.NumOfValidators]keys.ValidatorKey{}
-	for i, validator := range preState.GammaK {
+	for i, validator := range state.GammaK {
 		pendingValidators[i] = keys.ValidatorKey{
 			BandersnatchPublicKey: validator.Bandersnatch,
 			Ed25519PublicKey:      hexToEd25519PublicKey(validator.Ed25519),
@@ -140,7 +138,7 @@ func toValidatorState(
 		}
 	}
 	stagingValidators := [common.NumOfValidators]keys.ValidatorKey{}
-	for i, validator := range preState.Iota {
+	for i, validator := range state.Iota {
 		stagingValidators[i] = keys.ValidatorKey{
 			BandersnatchPublicKey: validator.Bandersnatch,
 			Ed25519PublicKey:      hexToEd25519PublicKey(validator.Ed25519),
@@ -149,7 +147,7 @@ func toValidatorState(
 		}
 	}
 	activeValidators := [common.NumOfValidators]keys.ValidatorKey{}
-	for i, validator := range preState.Kappa {
+	for i, validator := range state.Kappa {
 		activeValidators[i] = keys.ValidatorKey{
 			BandersnatchPublicKey: validator.Bandersnatch,
 			Ed25519PublicKey:      hexToEd25519PublicKey(validator.Ed25519),
@@ -158,7 +156,7 @@ func toValidatorState(
 		}
 	}
 	archivedValidators := [common.NumOfValidators]keys.ValidatorKey{}
-	for i, validator := range preState.Lambda {
+	for i, validator := range state.Lambda {
 		archivedValidators[i] = keys.ValidatorKey{
 			BandersnatchPublicKey: validator.Bandersnatch,
 			Ed25519PublicKey:      hexToEd25519PublicKey(validator.Ed25519),
@@ -169,9 +167,9 @@ func toValidatorState(
 
 	// sealing key series
 	var sealingKeySeries safrole.SealingKeySeriesKind
-	if len(preState.GammaS.Tickets) != 0 {
-		tickets := make([]safrole.Ticket, len(preState.GammaS.Tickets))
-		for i, ticket := range preState.GammaS.Tickets {
+	if len(state.GammaS.Tickets) != 0 {
+		tickets := make([]safrole.Ticket, len(state.GammaS.Tickets))
+		for i, ticket := range state.GammaS.Tickets {
 			tickets[i] = safrole.Ticket{
 				TicketID:   ticket.ID,
 				EntryIndex: ticket.Attempt,
@@ -181,14 +179,14 @@ func toValidatorState(
 	} else {
 		// fallback mode
 		fallbackKeys := safrole.FallbackKeys{}
-		for i, key := range preState.GammaS.Keys {
+		for i, key := range state.GammaS.Keys {
 			fallbackKeys[i] = bandersnatch.PublicKey(common.FromHex(key))
 		}
 		sealingKeySeries = fallbackKeys
 	}
 
-	ticketAccumulator := make([]safrole.Ticket, len(preState.GammaA))
-	for i, ticket := range preState.GammaA {
+	ticketAccumulator := make([]safrole.Ticket, len(state.GammaA))
+	for i, ticket := range state.GammaA {
 		ticketAccumulator[i] = safrole.Ticket{
 			TicketID:   ticket.ID,
 			EntryIndex: ticket.Attempt,
@@ -197,7 +195,7 @@ func toValidatorState(
 
 	safroleState := &safrole.SafroleState{
 		PendingValidators:  &pendingValidators,
-		EpochRoot:          preState.GammaZ,
+		EpochRoot:          state.GammaZ,
 		SealingKeySeries:   sealingKeySeries,
 		TicketsAccumulator: ticketAccumulator,
 	}

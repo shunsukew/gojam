@@ -61,7 +61,7 @@ func (s *ValidatorState) Update(
 		// Determine sealing key series
 		// Gray paper equation (6.24)
 		// if e' = e + 1 and m >= Y, ∣γa∣=E
-		if currEpoch.IsNextEpoch(prevEpoch) &&
+		if currEpoch.IsNextEpochAfter(prevEpoch) &&
 			!prevTimeSlot.InTicketSubmissionPeriod() &&
 			s.SafroleState.IsTicketAccumulatorFull() {
 			// Regular mode

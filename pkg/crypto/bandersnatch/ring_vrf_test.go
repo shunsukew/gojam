@@ -2,11 +2,13 @@ package bandersnatch
 
 import (
 	"testing"
+
+	"github.com/shunsukew/gojam/pkg/common"
 )
 
 func TestRingSize(t *testing.T) {
-	if ringSize() != RING_SIZE {
-		t.Fatalf("expected ring size %d, got %d", RING_SIZE, ringSize())
+	if ringSize() != common.NumOfValidators {
+		t.Fatalf("expected ring size %d, got %d", common.NumOfValidators, ringSize())
 	}
 }
 

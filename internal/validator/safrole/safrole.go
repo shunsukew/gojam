@@ -4,17 +4,16 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/docknetwork/scale-codec-go/codec"
 	"github.com/pkg/errors"
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/internal/validator/keys"
 	"github.com/shunsukew/gojam/pkg/common"
 	"github.com/shunsukew/gojam/pkg/crypto/bandersnatch"
+	"github.com/shunsukew/scale-codec-go/codec"
 	"golang.org/x/crypto/blake2b"
 )
 
 const (
-	MaxTicketEntryIndex     = 1 // entry index should be 0 or 1.
 	MaxTicketsInAccumulator = jamtime.TimeSlotsPerEpoch
 
 	JamTicketSeal = "jam_ticket_seal"
@@ -121,7 +120,10 @@ func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof, priorEpochR
 
 	// Equation (6.34), sort the tickets and keep the top K tickets
 	Tickets(newTicketsAccumulator).Sort()
-	s.TicketsAccumulator = newTicketsAccumulator[:MaxTicketsInAccumulator]
+	if len(newTicketsAccumulator) > MaxTicketsInAccumulator {
+		newTicketsAccumulator = newTicketsAccumulator[:MaxTicketsInAccumulator]
+	}
+	s.TicketsAccumulator = newTicketsAccumulator
 
 	// Equation (6.35)
 	// Ensure all newly submitted tickets are added to the accumulator
@@ -194,7 +196,7 @@ func FallbackKeysSequence(entropy common.Hash, validatorKeys []keys.ValidatorKey
 		if i != 0 {
 			offsetBytes, err := codec.IntToBytes(uint32(i))
 			if err != nil {
-				return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, err
+				return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, errors.WithStack(err)
 			}
 			fallbackKeyIndexBytes = offsetBytes.GetAll()
 		}
@@ -202,14 +204,13 @@ func FallbackKeysSequence(entropy common.Hash, validatorKeys []keys.ValidatorKey
 		hash := blake2b.Sum256(append(entropy[:], fallbackKeyIndexBytes...))
 
 		var num uint32
-		// TODO: Replace to own JAM codec implementation
-		bytes, err := codec.NewBytes(hash[4:])
+		bytes, err := codec.NewBytes(hash[:])
 		if err != nil {
-			return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, err
+			return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, errors.WithStack(err)
 		}
 		decodedU32Num, err := bytes.ToUint32()
 		if err != nil {
-			return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, err
+			return [jamtime.TimeSlotsPerEpoch]bandersnatch.PublicKey{}, errors.WithStack(err)
 		}
 		num = uint32(decodedU32Num)
 

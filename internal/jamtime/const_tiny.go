@@ -3,5 +3,6 @@
 package jamtime
 
 const (
-	TimeSlotsPerEpoch = 12
+	TimeSlotsPerEpoch        = 12
+	TicketSubmissionDeadline = 10
 )

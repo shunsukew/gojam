@@ -9,11 +9,12 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
+	"github.com/shunsukew/gojam/pkg/common"
 )
 
 func init() {
 	// Initialize the library
-	if ok := C.init_ring_size(C.size_t(RING_SIZE)); !ok {
+	if ok := C.init_ring_size(C.size_t(common.NumOfValidators)); !ok {
 		panic("failed to initialize bandersnatch ring vrf")
 	}
 }
@@ -89,6 +90,7 @@ func sign(
 	var signature Signature
 
 	// auxData can be empty, but it must be passed as a slice of length 1
+	auxDataLen := len(auxData)
 	if len(auxData) == 0 {
 		auxData = make([]byte, 1)
 	}
@@ -101,7 +103,7 @@ func sign(
 		(*C.uchar)(unsafe.Pointer(&input[0])),
 		C.size_t(len(input)),
 		(*C.uchar)(unsafe.Pointer(&auxData[0])),
-		C.size_t(len(auxData)),
+		C.size_t(auxDataLen),
 		(*C.uchar)(unsafe.Pointer(&signature[0])),
 	)
 	if !ok {
@@ -124,6 +126,7 @@ func verify(
 	var output VrfOutput
 
 	// auxData can be empty, but we must pass a valid pointer
+	auxDataLen := len(auxData)
 	if len(auxData) == 0 {
 		auxData = make([]byte, 1)
 	}
@@ -132,7 +135,7 @@ func verify(
 		(*C.uchar)(unsafe.Pointer(&input[0])),
 		C.size_t(len(input)),
 		(*C.uchar)(unsafe.Pointer(&auxData[0])),
-		C.size_t(len(auxData)),
+		C.size_t(auxDataLen),
 		(*C.uchar)(unsafe.Pointer(&commitment[0])),
 		(*C.uchar)(unsafe.Pointer(&ringProof[0])),
 		(*C.uchar)(unsafe.Pointer(&output[0])),
