@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/shunsukew/gojam/internal/history"
-	"github.com/shunsukew/gojam/internal/work"
 	"github.com/shunsukew/gojam/pkg/common"
 	test_utils "github.com/shunsukew/gojam/test/utils"
 	"github.com/stretchr/testify/require"
@@ -41,15 +40,18 @@ func TestRecentHistoryStateTransition(t *testing.T) {
 				}
 
 				recentHistory := toRecentHistory(testVector.PreState)
-
 				expectedRecentHistory := toRecentHistory(testVector.PostState)
+
+				workPackageHashToSegmentRoot := make(map[common.Hash]common.Hash)
+				for _, workPackage := range testVector.Input.WorkPackages {
+					workPackageHashToSegmentRoot[workPackage.Hash] = workPackage.ExportsRoot
+				}
 
 				err = recentHistory.Update(
 					testVector.Input.HeaderHash,
 					testVector.Input.ParentStateRoot,
 					testVector.Input.AccumulateRoot,
-					// TODO: input actual work test vector packages
-					[]*work.WorkPackage{},
+					workPackageHashToSegmentRoot,
 				)
 				require.NoError(t, err, "failed to update recent history")
 
@@ -57,6 +59,8 @@ func TestRecentHistoryStateTransition(t *testing.T) {
 				for i := range *expectedRecentHistory {
 					require.Equal(t, (*expectedRecentHistory)[i].HeaderHash, (*recentHistory)[i].HeaderHash, "header hash mismatch")
 					require.Equal(t, (*expectedRecentHistory)[i].StateRoot, (*recentHistory)[i].StateRoot, "state root mismatch")
+					// require.Equal(t, (*expectedRecentHistory)[i].AccumulationResultMMR, (*recentHistory)[i].AccumulationResultMMR, "accumulation result MMR mismatch")
+					require.Equal(t, (*expectedRecentHistory)[i].WorkPackageHashes, (*recentHistory)[i].WorkPackageHashes, "work package hashes mismatch")
 				}
 
 				// TODO: Finally check the entire recent history state
@@ -70,8 +74,12 @@ func toRecentHistory(state State) *history.RecentHistory {
 	recentHistory := &history.RecentHistory{}
 	for _, block := range state.Beta {
 		recentBlock := &history.RecentBlock{
-			HeaderHash: block.HeaderHash,
-			StateRoot:  block.StateRoot,
+			HeaderHash:        block.HeaderHash,
+			StateRoot:         block.StateRoot,
+			WorkPackageHashes: make(map[common.Hash]common.Hash),
+		}
+		for _, reported := range block.Reported {
+			recentBlock.WorkPackageHashes[reported.Hash] = reported.ExportsRoot
 		}
 		*recentHistory = append(*recentHistory, recentBlock)
 	}

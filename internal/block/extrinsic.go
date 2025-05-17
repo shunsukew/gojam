@@ -1,6 +1,10 @@
 package block
 
-import "github.com/shunsukew/gojam/internal/validator/safrole"
+import (
+	"github.com/shunsukew/gojam/internal/jamtime"
+	"github.com/shunsukew/gojam/internal/validator/safrole"
+	"github.com/shunsukew/gojam/internal/work"
+)
 
 // Hasing Extrinsic
 // (5.4) (5.5) (5.6)
@@ -22,7 +26,22 @@ type TicketsExtrinsic struct {
 
 type PreimagesExtrinsic struct{}
 
-type GuaranteesExtrinsic struct{}
+// EG ∈ ⟦(w ∈ W, t ∈ NT, a ∈ ⟦(NV, E)⟧₂:₃)⟧C
+type GuaranteesExtrinsic struct {
+	Guarantees []*Guarantee // TODO: max array length must be core count C (:C). unique per core (11.24) EG = [(gw)c | g ∈ EG].
+}
+
+// (w ∈ W, t ∈ NT, a ∈ ⟦(NV, E)⟧₂:₃)
+type Guarantee struct {
+	WorkReport  *work.WorkReport // w ∈ W
+	Timeslot    jamtime.TimeSlot // t ∈ NT
+	Credentials []*Credential    // TODO: array length must be 2 or 3 (2:3). unique per validator index, order by validator index (11.25) ∀g ∈ EG ∶ ga = [v || (v,s) ∈ ga].
+}
+
+type Credential struct {
+	ValidatorIndex int8
+	Signature      []byte // E;blackboard
+}
 
 type AssuarancesExtrinsic struct{}
 

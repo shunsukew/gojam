@@ -13,7 +13,7 @@ type RecentBlock struct {
 	HeaderHash            common.Hash
 	StateRoot             common.Hash
 	AccumulationResultMMR *MMR
-	WorkPackageHashes     map[common.Hash]common.Hash // Work package hashes in work reports. The Number of work reports is always less than the number of cores C.
+	WorkPackageHashes     map[common.Hash]common.Hash // Work package hash <> segment root mapping derived from work reports.
 }
 
 type MMR struct {

@@ -1,7 +1,6 @@
 package history
 
 import (
-	"github.com/shunsukew/gojam/internal/work"
 	"github.com/shunsukew/gojam/pkg/common"
 )
 
@@ -21,21 +20,25 @@ func (recentHistory *RecentHistory) Update(
 	headerHash common.Hash, // H(H)
 	priorStateRoot common.Hash, // Hr
 	accumulationResultRoot common.Hash,
-	workPackages []*work.WorkPackage,
+	workPackageHashes map[common.Hash]common.Hash, // {((gw)s)h ↦ ((gw)s)e ∣ g ∈ EG}. should be calculated from Guarantee Extrinsic work reports.
 ) error {
 	// (7.2) β† ≡ β except β†[∣β∣ − 1]s = Hr
 	if len(*recentHistory) != 0 {
 		(*recentHistory)[len(*recentHistory)-1].StateRoot = priorStateRoot
 	}
 
+	// TODO: b & p are missing
+	// b: Accumulation result MMR
+	// p: work-package hashes of each item reported
 	newRecentBlock := &RecentBlock{
-		HeaderHash: headerHash,
-		StateRoot:  common.Hash{}, // empty state root as we don't know posterior state root of this block yet
+		HeaderHash:        headerHash,
+		StateRoot:         common.Hash{}, // empty state root as we don't know posterior state root of this block yet
+		WorkPackageHashes: workPackageHashes,
 	}
 
 	*recentHistory = append(*recentHistory, newRecentBlock)
 	if len(*recentHistory) > NumOfRetainedBlocks {
-		*recentHistory = (*recentHistory)[1:]
+		*recentHistory = (*recentHistory)[len(*recentHistory)-NumOfRetainedBlocks:]
 	}
 
 	return nil
