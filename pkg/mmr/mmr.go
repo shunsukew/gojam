@@ -9,24 +9,24 @@ func Append(mmr MMR, leaf common.Hash, hasher func(...[]byte) common.Hash) MMR {
 	return insertLeaf(mmr, &leaf, 0, hasher)
 }
 
-func insertLeaf(mmr MMR, leaf *common.Hash, index int, hasher func(...[]byte) common.Hash) MMR {
-	if index >= len(mmr) {
+func insertLeaf(mmr MMR, leaf *common.Hash, level int, hasher func(...[]byte) common.Hash) MMR {
+	if level >= len(mmr) {
 		return append(mmr, leaf)
 	}
 
-	if mmr[index] == nil {
-		return setPeak(mmr, index, leaf)
+	if mmr[level] == nil {
+		return setPeak(mmr, level, leaf)
 	}
 
-	hash := hasher(append((*mmr[index])[:], (*leaf)[:]...))
+	hash := hasher(append((*mmr[level])[:], (*leaf)[:]...))
 
-	mmr = setPeak(mmr, index, nil)
-	return insertLeaf(mmr, &hash, index+1, hasher)
+	mmr = setPeak(mmr, level, nil)
+	return insertLeaf(mmr, &hash, level+1, hasher)
 }
 
-func setPeak(mmr MMR, index int, peak *common.Hash) MMR {
+func setPeak(mmr MMR, level int, peak *common.Hash) MMR {
 	newMMR := make(MMR, len(mmr))
 	copy(newMMR, mmr)
-	newMMR[index] = peak
+	newMMR[level] = peak
 	return newMMR
 }
