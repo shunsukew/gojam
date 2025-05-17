@@ -18,7 +18,7 @@ func insertLeaf(mmr MMR, leaf *common.Hash, level int, hasher func(...[]byte) co
 		return setPeak(mmr, level, leaf)
 	}
 
-	hash := hasher(append((*mmr[level])[:], (*leaf)[:]...))
+	hash := hasher((*mmr[level])[:], (*leaf)[:])
 
 	mmr = setPeak(mmr, level, nil)
 	return insertLeaf(mmr, &hash, level+1, hasher)
