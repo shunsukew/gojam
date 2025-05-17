@@ -5,33 +5,28 @@ import "github.com/shunsukew/gojam/pkg/common"
 type MMR []*common.Hash
 
 // Append returns a new MMR with the given hash appended, without modifying the original.
-func Append(r MMR, l common.Hash, hasher func(...[]byte) common.Hash) MMR {
-	return P(r, &l, 0, hasher)
+func Append(mmr MMR, leaf common.Hash, hasher func(...[]byte) common.Hash) MMR {
+	return insertLeaf(mmr, &leaf, 0, hasher)
 }
 
-// P recursively merges the hash into the MMR without modifying original data
-func P(r MMR, l *common.Hash, n int, hasher func(...[]byte) common.Hash) MMR {
-	if n >= len(r) {
-		return append(r, l)
+func insertLeaf(mmr MMR, leaf *common.Hash, index int, hasher func(...[]byte) common.Hash) MMR {
+	if index >= len(mmr) {
+		return append(mmr, leaf)
 	}
 
-	if r[n] == nil {
-		return R(r, n, l)
+	if mmr[index] == nil {
+		return setPeak(mmr, index, leaf)
 	}
 
-	// Combine existing peak with new leaf
-	concatinated := append((*r[n])[:], (*l)[:]...)
-	hash := hasher(concatinated)
+	hash := hasher(append((*mmr[index])[:], (*leaf)[:]...))
 
-	// Clear current peak (immutably), recurse with combined
-	r = R(r, n, nil)
-	return P(r, &hash, n+1, hasher)
+	mmr = setPeak(mmr, index, nil)
+	return insertLeaf(mmr, &hash, index+1, hasher)
 }
 
-// R returns a new MMR with index `i` set to `v`, copying the input
-func R(s MMR, i int, v *common.Hash) MMR {
-	newS := make(MMR, len(s))
-	copy(newS, s)
-	newS[i] = v
-	return newS
+func setPeak(mmr MMR, index int, peak *common.Hash) MMR {
+	newMMR := make(MMR, len(mmr))
+	copy(newMMR, mmr)
+	newMMR[index] = peak
+	return newMMR
 }
