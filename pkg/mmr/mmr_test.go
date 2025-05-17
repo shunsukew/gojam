@@ -54,6 +54,15 @@ func TestAppend(t *testing.T) {
 				return MMR{nil, nil, &hash_1_2_3}
 			}(),
 		},
+		{
+			name: "Three Peaks",
+			mmr:  MMR{&hash_2, nil, &hash_1},
+			leaf: hash_3,
+			expected: func() MMR {
+				hash_2_3 := hasher(hash_2[:], hash_3[:])
+				return MMR{nil, &hash_2_3, &hash_1}
+			}(),
+		},
 	}
 
 	for _, test := range tests {
