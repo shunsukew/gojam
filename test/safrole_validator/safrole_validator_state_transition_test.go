@@ -17,22 +17,9 @@ import (
 	"github.com/shunsukew/gojam/pkg/common"
 	"github.com/shunsukew/gojam/pkg/crypto/bandersnatch"
 	"github.com/shunsukew/gojam/pkg/crypto/bls"
+	test_utils "github.com/shunsukew/gojam/test/utils"
 	"github.com/stretchr/testify/require"
 )
-
-func getJsonFilePaths(path string) ([]string, error) {
-	var files []string
-	err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() && filepath.Ext(p) == ".json" {
-			files = append(files, p)
-		}
-		return nil
-	})
-	return files, err
-}
 
 func hexToEd25519PublicKey(hex string) ed25519.PublicKey {
 	return ed25519.PublicKey(common.FromHex(hex))
@@ -40,7 +27,7 @@ func hexToEd25519PublicKey(hex string) ed25519.PublicKey {
 
 func TestSafroleAndValidatorStateTransition(t *testing.T) {
 	t.Run(testSpec, func(t *testing.T) {
-		filePaths, err := getJsonFilePaths(vectorFolderPath)
+		filePaths, err := test_utils.GetJsonFilePaths(vectorFolderPath)
 		if err != nil {
 			require.NoError(t, err, "failed to get JSON file paths")
 		}
