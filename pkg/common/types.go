@@ -53,3 +53,23 @@ func (h *Hash) UnmarshalJSON(data []byte) error {
 func (h *Hash) ToHex() string {
 	return "0x" + hex.EncodeToString(h[:])
 }
+
+type Blob []byte
+
+func HexToBlob(s string) Blob {
+	return FromHex(s)
+}
+
+func (b *Blob) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	*b = FromHex(s)
+
+	return nil
+}
+
+// ℕ_L
+type BlobLength uint32

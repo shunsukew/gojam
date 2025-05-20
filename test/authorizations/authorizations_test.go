@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	authpool "github.com/shunsukew/gojam/internal/authorizer/pool"
@@ -29,10 +28,6 @@ func TestAuthorizationsStateTransition(t *testing.T) {
 				file, err := os.ReadFile(filePath)
 				if err != nil {
 					require.NoErrorf(t, err, "failed to read test vector file: %s", filePath)
-				}
-
-				if !strings.Contains(filePath, "progress_authorizations-1") {
-					return
 				}
 
 				var testVector TestVector
