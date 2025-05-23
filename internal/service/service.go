@@ -16,7 +16,9 @@ type Balance uint64 // ℕ_B
 type Gas uint64 // ℕ_G
 
 // δ ∈ D⟨NS → A⟩
-type Services map[ServiceId]*ServiceAccount
+type Services struct {
+	services map[ServiceId]*ServiceAccount
+}
 
 type PreimageAvailabilityHistory []jamtime.TimeSlot
 
