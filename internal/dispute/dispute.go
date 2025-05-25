@@ -47,6 +47,19 @@ func (ds *DisputeState) getPastReportedHashes() map[common.Hash]struct{} {
 	return pastReportedHashes
 }
 
+func (ds *DisputeState) containsPunishedValidators(keys []ed25519.PublicKey) bool {
+	punishedSet := make(map[string]struct{}, len(ds.Offenders))
+	for _, offender := range ds.Offenders {
+		punishedSet[common.Bytes2Hex(offender)] = struct{}{}
+	}
+	for _, key := range keys {
+		if _, exists := punishedSet[common.Bytes2Hex(key)]; exists {
+			return true
+		}
+	}
+	return false
+}
+
 type Verdicts []*Verdict
 
 type Verdict struct {

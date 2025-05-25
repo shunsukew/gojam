@@ -40,8 +40,8 @@ func TestDisputeStateTransition(t *testing.T) {
 					require.NoError(t, err, "failed to unmarshal test vector: %s", filePath)
 				}
 
-				verticts := make([]*dispute.Verdict, len(testVector.Input.Verdicts))
-				for i, v := range testVector.Input.Verdicts {
+				verticts := make([]*dispute.Verdict, len(testVector.Input.Disputes.Verdicts))
+				for i, v := range testVector.Input.Disputes.Verdicts {
 					judgements := &dispute.Judgements{}
 					for j, vote := range v.Votes {
 						(*judgements)[j] = &dispute.Judgement{
@@ -57,8 +57,8 @@ func TestDisputeStateTransition(t *testing.T) {
 					}
 				}
 
-				culprits := make([]*dispute.Culprit, len(testVector.Input.Culprits))
-				for i, c := range testVector.Input.Culprits {
+				culprits := make([]*dispute.Culprit, len(testVector.Input.Disputes.Culprits))
+				for i, c := range testVector.Input.Disputes.Culprits {
 					culprits[i] = &dispute.Culprit{
 						WorkReportHash: c.Target,
 						CulpritKey:     ed25519.PublicKey(common.FromHex(c.Key)),
@@ -66,8 +66,8 @@ func TestDisputeStateTransition(t *testing.T) {
 					}
 				}
 
-				faults := make([]*dispute.Fault, len(testVector.Input.Faults))
-				for i, f := range testVector.Input.Faults {
+				faults := make([]*dispute.Fault, len(testVector.Input.Disputes.Faults))
+				for i, f := range testVector.Input.Disputes.Faults {
 					faults[i] = &dispute.Fault{
 						WorkReportHash: f.Target,
 						Vote:           f.Vote,
@@ -110,10 +110,10 @@ func TestDisputeStateTransition(t *testing.T) {
 				)
 				if expectedOutput.Err != "" {
 					require.Error(t, err, "error expected: %v", expectedOutput.Err)
-				} else {
-					require.NoError(t, err, "error unexpected: %s", err)
+					return
 				}
 
+				require.NoError(t, err, "error unexpected: %s", err)
 				require.Equal(t, expectedDisputeState.GoodReports, disputeState.GoodReports, "Good reports mismatch")
 				require.Equal(t, expectedDisputeState.BadReports, disputeState.BadReports, "Bad reports mismatch")
 				require.Equal(t, expectedDisputeState.WonkeyReports, disputeState.WonkeyReports, "Wonkey reports mismatch")
@@ -145,9 +145,13 @@ type TestVector struct {
 }
 
 type Input struct {
-	Verdicts []Verdict
-	Culprits []Culprit
-	Faults   []Fault
+	Disputes Disputes `json:"disputes"`
+}
+
+type Disputes struct {
+	Verdicts []Verdict `json:"verdicts"`
+	Culprits []Culprit `json:"culprits"`
+	Faults   []Fault   `json:"faults"`
 }
 
 type Verdict struct {
@@ -186,7 +190,7 @@ type State struct {
 type Psi struct {
 	Good      []common.Hash `json:"good"`
 	Bad       []common.Hash `json:"bad"`
-	Wonkey    []common.Hash `json:"wonkey"`
+	Wonkey    []common.Hash `json:"wonky"`
 	Offenders []string      `json:"offenders"`
 }
 
