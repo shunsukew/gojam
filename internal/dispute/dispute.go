@@ -6,7 +6,15 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/shunsukew/gojam/internal/jamtime"
+	"github.com/shunsukew/gojam/internal/validator/keys"
 	"github.com/shunsukew/gojam/pkg/common"
+	"github.com/shunsukew/gojam/pkg/crypto"
+)
+
+const (
+	GoodReportLabel   ReportLabel = "good"
+	BadReportLabel    ReportLabel = "bad"
+	WonkeyReportLabel ReportLabel = "wonkey"
 )
 
 // ψ ≡ (ψg, ψb, ψw, ψo)
@@ -17,17 +25,7 @@ type DisputeState struct {
 	Offenders     []ed25519.PublicKey // ψo: The set of public keys of validators who have been punished.
 }
 
-func (ds *DisputeState) containsPastReportHashes(verdicts []*Verdict) (bool, common.Hash) {
-	pastReportedHashes := ds.getPastWorkReports()
-	for _, verdict := range verdicts {
-		if _, ok := pastReportedHashes[verdict.WorkReportHash]; ok {
-			return true, verdict.WorkReportHash
-		}
-	}
-	return false, common.Hash{}
-}
-
-func (ds *DisputeState) getPastWorkReports() map[common.Hash]struct{} {
+func (ds *DisputeState) getPastWorkReportHashes() map[common.Hash]struct{} {
 	pastReportedHashes := make(map[common.Hash]struct{}, len(ds.GoodReports)+len(ds.BadReports)+len(ds.WonkeyReports))
 	for _, report := range ds.GoodReports {
 		pastReportedHashes[report] = struct{}{}
@@ -60,6 +58,66 @@ type Verdict struct {
 	WorkReportHash common.Hash
 	Epoch          jamtime.Epoch
 	Judgements     *Judgements // judgements from 2/3 + 1 supermajority valudators is requirement
+}
+
+type VerdictSummary struct {
+	WorkReportHash common.Hash
+	Epoch          jamtime.Epoch
+	PositiveVotes  int
+	ReportLabel    ReportLabel
+}
+
+type ReportLabel string
+
+func (ds *DisputeState) SummarizeVerdicts(
+	epoch jamtime.Epoch,
+	verdicts Verdicts,
+	activeValidators, archivedValidators []*keys.ValidatorKey,
+) (map[common.Hash]*VerdictSummary, error) {
+	verdictSummaries := make(map[common.Hash]*VerdictSummary, len(verdicts))
+	pastReported := ds.getPastWorkReportHashes()
+
+	for _, v := range verdicts {
+		// work report hash should not be included if it has been reported in the past
+		if _, exists := pastReported[v.WorkReportHash]; exists {
+			return nil, errors.WithMessagef(ErrInvalidVerdicts, "verdict %s has already been reported in the past", v.WorkReportHash.ToHex())
+		}
+
+		if !v.Judgements.isSortedNonDuplicates() {
+			return nil, errors.WithMessagef(ErrInvalidVerdicts, "judgements in verdict %s are not sorted or contain duplicates", v.WorkReportHash.ToHex())
+		}
+
+		var effectiveValidators []*keys.ValidatorKey
+		if epoch.Equal(v.Epoch) {
+			effectiveValidators = activeValidators
+		} else if epoch.IsNextEpochAfter(v.Epoch) {
+			effectiveValidators = archivedValidators
+		} else {
+			return nil, errors.WithMessagef(ErrInvalidVerdicts, "verdict %s has an invalid epoch: %d, expected %d or %d", v.WorkReportHash.ToHex(), v.Epoch, epoch, epoch+1)
+		}
+
+		for _, j := range v.Judgements {
+			pubKey := effectiveValidators[j.ValidatorIndex].Ed25519PublicKey
+			var msg []byte
+			if j.Vote {
+				msg = append([]byte(crypto.JamValidJudgementStatement), v.WorkReportHash[:]...)
+			} else {
+				msg = append([]byte(crypto.JamInvalidJudgementStatement), v.WorkReportHash[:]...)
+			}
+			if !ed25519.Verify(pubKey, msg, j.Signature) {
+				return nil, errors.WithMessagef(ErrInvalidVerdicts, "verdict %s has an invalid cryptonature from validator %d", v.WorkReportHash.ToHex(), j.ValidatorIndex)
+			}
+		}
+
+		summary, err := v.TallyVotes()
+		if err != nil {
+			return nil, errors.WithMessagef(ErrInvalidVerdicts, "failed to tally votes for verdict %s: %v", v.WorkReportHash, err)
+		}
+
+		verdictSummaries[v.WorkReportHash] = summary
+	}
+
+	return verdictSummaries, nil
 }
 
 func (v *Verdict) TallyVotes() (*VerdictSummary, error) {
@@ -138,14 +196,6 @@ func (culprits Culprits) isSortedNonDuplicates() bool {
 	return true
 }
 
-func (culprits Culprits) groupByReportHash() map[common.Hash][]*Culprit {
-	grouped := make(map[common.Hash][]*Culprit, len(culprits))
-	for _, culprit := range culprits {
-		grouped[culprit.WorkReportHash] = append(grouped[culprit.WorkReportHash], culprit)
-	}
-	return grouped
-}
-
 type Faults []*Fault
 
 type Fault struct {
@@ -162,12 +212,4 @@ func (faults Faults) isSortedNonDuplicates() bool {
 		}
 	}
 	return true
-}
-
-func (faults Faults) groupByReportHash() map[common.Hash][]*Fault {
-	grouped := make(map[common.Hash][]*Fault, len(faults))
-	for _, fault := range faults {
-		grouped[fault.WorkReportHash] = append(grouped[fault.WorkReportHash], fault)
-	}
-	return grouped
 }
