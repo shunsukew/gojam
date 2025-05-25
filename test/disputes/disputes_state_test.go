@@ -162,7 +162,7 @@ type Verdict struct {
 
 type Vote struct {
 	Vote      bool   `json:"vote"`
-	Index     uint8  `json:"index"`
+	Index     uint32 `json:"index"`
 	Signature string `json:"signature"`
 }
 

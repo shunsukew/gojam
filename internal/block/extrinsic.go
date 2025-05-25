@@ -40,7 +40,7 @@ type Guarantee struct {
 }
 
 type Credential struct {
-	ValidatorIndex uint8
+	ValidatorIndex uint32
 	Signature      []byte // 𝔼
 }
 

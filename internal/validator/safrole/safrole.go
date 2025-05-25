@@ -8,6 +8,7 @@ import (
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/internal/validator/keys"
 	"github.com/shunsukew/gojam/pkg/common"
+	"github.com/shunsukew/gojam/pkg/crypto"
 	"github.com/shunsukew/gojam/pkg/crypto/bandersnatch"
 	"github.com/shunsukew/scale-codec-go/codec"
 	"golang.org/x/crypto/blake2b"
@@ -15,8 +16,6 @@ import (
 
 const (
 	MaxTicketsInAccumulator = jamtime.TimeSlotsPerEpoch
-
-	JamTicketSeal = "jam_ticket_seal"
 )
 
 type SealingKeySeriesKind interface {
@@ -141,7 +140,7 @@ func (s *SafroleState) AccumulateTickets(ticketProofs []TicketProof, priorEpochR
 }
 
 func buildTicketSealInput(entropy common.Hash, entryIndex uint8) []byte {
-	data := []byte(JamTicketSeal)
+	data := []byte(crypto.JamTicketSealStatement)
 	data = append(data, entropy[:]...)
 	data = append(data, byte(entryIndex))
 	return data

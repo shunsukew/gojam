@@ -9,12 +9,6 @@ import (
 	"github.com/shunsukew/gojam/pkg/common"
 )
 
-const (
-	GoodReport   Conclusion = "good"
-	BadReport    Conclusion = "bad"
-	WonkeyReport Conclusion = "wonkey"
-)
-
 // ψ ≡ (ψg, ψb, ψw, ψo)
 type DisputeState struct {
 	GoodReports   []common.Hash       // ψg: The set of good work reports hashes.
@@ -24,7 +18,7 @@ type DisputeState struct {
 }
 
 func (ds *DisputeState) containsPastReportHashes(verdicts []*Verdict) (bool, common.Hash) {
-	pastReportedHashes := ds.getPastReportedHashes()
+	pastReportedHashes := ds.getPastWorkReports()
 	for _, verdict := range verdicts {
 		if _, ok := pastReportedHashes[verdict.WorkReportHash]; ok {
 			return true, verdict.WorkReportHash
@@ -33,7 +27,7 @@ func (ds *DisputeState) containsPastReportHashes(verdicts []*Verdict) (bool, com
 	return false, common.Hash{}
 }
 
-func (ds *DisputeState) getPastReportedHashes() map[common.Hash]struct{} {
+func (ds *DisputeState) getPastWorkReports() map[common.Hash]struct{} {
 	pastReportedHashes := make(map[common.Hash]struct{}, len(ds.GoodReports)+len(ds.BadReports)+len(ds.WonkeyReports))
 	for _, report := range ds.GoodReports {
 		pastReportedHashes[report] = struct{}{}
@@ -68,15 +62,7 @@ type Verdict struct {
 	Judgements     *Judgements // judgements from 2/3 + 1 supermajority valudators is requirement
 }
 
-type VerdictOutcome struct {
-	WorkReportHash common.Hash // r
-	PositiveVotes  int
-	Conclusion     Conclusion
-}
-
-type Conclusion string
-
-func (v *Verdict) TallyVotes() (*VerdictOutcome, error) {
+func (v *Verdict) TallyVotes() (*VerdictSummary, error) {
 	var positiveVotes int
 	for _, judgement := range *v.Judgements {
 		if judgement.Vote {
@@ -84,14 +70,14 @@ func (v *Verdict) TallyVotes() (*VerdictOutcome, error) {
 		}
 	}
 
-	var conclusion Conclusion
+	var label ReportLabel
 	switch positiveVotes {
 	case 0:
-		conclusion = BadReport
+		label = BadReportLabel
 	case common.NumOfMinorityValidators:
-		conclusion = WonkeyReport
+		label = WonkeyReportLabel
 	case common.NumOfSuperMajorityValidators:
-		conclusion = GoodReport
+		label = GoodReportLabel
 	default:
 		return nil, errors.WithMessagef(
 			ErrInvalidVerdicts,
@@ -100,10 +86,11 @@ func (v *Verdict) TallyVotes() (*VerdictOutcome, error) {
 		)
 	}
 
-	return &VerdictOutcome{
+	return &VerdictSummary{
 		WorkReportHash: v.WorkReportHash,
+		Epoch:          v.Epoch,
 		PositiveVotes:  positiveVotes,
-		Conclusion:     conclusion,
+		ReportLabel:    label,
 	}, nil
 }
 
@@ -120,7 +107,7 @@ type Judgements [common.NumOfSuperMajorityValidators]*Judgement
 
 type Judgement struct {
 	Vote           bool
-	ValidatorIndex uint8
+	ValidatorIndex uint32
 	Signature      []byte // 𝔼
 }
 
@@ -151,6 +138,14 @@ func (culprits Culprits) isSortedNonDuplicates() bool {
 	return true
 }
 
+func (culprits Culprits) groupByReportHash() map[common.Hash][]*Culprit {
+	grouped := make(map[common.Hash][]*Culprit, len(culprits))
+	for _, culprit := range culprits {
+		grouped[culprit.WorkReportHash] = append(grouped[culprit.WorkReportHash], culprit)
+	}
+	return grouped
+}
+
 type Faults []*Fault
 
 type Fault struct {
@@ -167,4 +162,12 @@ func (faults Faults) isSortedNonDuplicates() bool {
 		}
 	}
 	return true
+}
+
+func (faults Faults) groupByReportHash() map[common.Hash][]*Fault {
+	grouped := make(map[common.Hash][]*Fault, len(faults))
+	for _, fault := range faults {
+		grouped[fault.WorkReportHash] = append(grouped[fault.WorkReportHash], fault)
+	}
+	return grouped
 }
