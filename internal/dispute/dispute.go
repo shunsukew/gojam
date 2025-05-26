@@ -213,3 +213,73 @@ func (faults Faults) isSortedNonDuplicates() bool {
 	}
 	return true
 }
+
+func ed25519keySet(vs []*keys.ValidatorKey) map[string]struct{} {
+	out := make(map[string]struct{}, len(vs))
+	for _, v := range vs {
+		out[string(v.Ed25519PublicKey)] = struct{}{}
+	}
+	return out
+}
+
+func groupAndVerifyCulprits(
+	culprits Culprits,
+	summaries map[common.Hash]*VerdictSummary,
+) (map[common.Hash][]*Culprit, []ed25519.PublicKey, error) {
+	groupByReportHash := make(map[common.Hash][]*Culprit, len(culprits))
+	culpritKeys := make([]ed25519.PublicKey, len(culprits))
+
+	for i, c := range culprits {
+		if _, ok := summaries[c.WorkReportHash]; !ok {
+			return nil, nil, errors.WithMessagef(
+				ErrInvalidCulprits,
+				"culprit %s work report hash %s does not match any verdict", string(c.CulpritKey), c.WorkReportHash.ToHex(),
+			)
+		}
+
+		msg := append([]byte(crypto.JamGuaranteeStatement), c.WorkReportHash[:]...)
+		if !ed25519.Verify(c.CulpritKey, msg, c.Signature) {
+			return nil, nil, errors.WithMessagef(
+				ErrInvalidCulprits,
+				"culprit %s with work report %s has invalid signature", string(c.CulpritKey), c.WorkReportHash,
+			)
+		}
+		groupByReportHash[c.WorkReportHash] = append(groupByReportHash[c.WorkReportHash], c)
+		culpritKeys[i] = c.CulpritKey
+	}
+	return groupByReportHash, culpritKeys, nil
+}
+
+func groupAndVerifyFaults(
+	faults Faults,
+	summaries map[common.Hash]*VerdictSummary,
+) (map[common.Hash][]*Fault, []ed25519.PublicKey, error) {
+	groupByReportHash := make(map[common.Hash][]*Fault, len(faults))
+	faultKeys := make([]ed25519.PublicKey, len(faults))
+
+	for i, f := range faults {
+		if _, ok := summaries[f.WorkReportHash]; !ok {
+			return nil, nil, errors.WithMessagef(
+				ErrInvalidFaults,
+				"fault %s with work report %s does not match any verdict", string(f.FaultKey), f.WorkReportHash.ToHex(),
+			)
+		}
+
+		stmt := crypto.JamInvalidJudgementStatement
+		if f.Vote {
+			stmt = crypto.JamValidJudgementStatement
+		}
+		msg := append([]byte(stmt), f.WorkReportHash[:]...)
+		if !ed25519.Verify(f.FaultKey, msg, f.Signature) {
+			return nil, nil, errors.WithMessagef(
+				ErrInvalidFaults,
+				"fault %s with work report %s has invalid signature", string(f.FaultKey), f.WorkReportHash,
+			)
+		}
+
+		groupByReportHash[f.WorkReportHash] = append(groupByReportHash[f.WorkReportHash], f)
+		faultKeys[i] = f.FaultKey
+	}
+
+	return groupByReportHash, faultKeys, nil
+}
