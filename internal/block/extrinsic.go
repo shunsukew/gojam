@@ -1,6 +1,7 @@
 package block
 
 import (
+	"github.com/shunsukew/gojam/internal/dispute"
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/internal/validator/safrole"
 	"github.com/shunsukew/gojam/internal/work"
@@ -39,10 +40,14 @@ type Guarantee struct {
 }
 
 type Credential struct {
-	ValidatorIndex int8
-	Signature      []byte // E;blackboard
+	ValidatorIndex uint32
+	Signature      []byte // 𝔼
 }
 
 type AssuarancesExtrinsic struct{}
 
-type DisputesExtrinsic struct{}
+type DisputesExtrinsic struct {
+	Verdicts []*dispute.Verdict // Verdicts v must be ordered by report hash
+	Culprits []*dispute.Culprit // Should not include already-inside-punish-set offenders
+	Faults   []*dispute.Fault   // Should not include already-inside-punish-set offenders
+}
