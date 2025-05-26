@@ -37,7 +37,7 @@ func (ds *DisputeState) Update(
 
 	verdictSummaries, err := ds.SummarizeVerdicts(epoch, verdicts, activeValidators, archivedValidators)
 	if err != nil {
-		return nil, errors.WithMessage(ErrInvalidVerdicts, err.Error())
+		return nil, errors.WithStack(err)
 	}
 
 	culpritsByReportHash, culpritKeys, err := groupAndVerifyCulprits(culprits, verdictSummaries)
