@@ -1,6 +1,8 @@
 package dispute
 
 import (
+	"crypto/ed25519"
+
 	"github.com/pkg/errors"
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/internal/validator/keys"
@@ -13,62 +15,68 @@ func (ds *DisputeState) Update(
 	activeValidators []*keys.ValidatorKey,
 	archivedValidators []*keys.ValidatorKey,
 	timeSlot jamtime.TimeSlot,
-) error {
+) (offendersMark []ed25519.PublicKey, err error) {
 	epoch := timeSlot.ToEpoch()
 
 	activeValidatorsSet := ed25519keySet(activeValidators)
 	archivedValidatorsSet := ed25519keySet(archivedValidators)
 
 	if !verdicts.isSortedNonDuplicates() {
-		return errors.WithMessage(ErrInvalidVerdicts, "verdicts are not sorted or contain duplicates")
+		return nil, errors.WithMessage(ErrInvalidVerdicts, "verdicts are not sorted or contain duplicates")
 	}
 
 	// What if extrinsic contains same validator key in culprits and faults??
 
 	if !culprits.isSortedNonDuplicates() {
-		return errors.WithMessage(ErrInvalidCulprits, "culprits are not sorted or contain duplicates")
+		return nil, errors.WithMessage(ErrInvalidCulprits, "culprits are not sorted or contain duplicates")
 	}
 
 	if !faults.isSortedNonDuplicates() {
-		return errors.WithMessage(ErrInvalidFaults, "faults are not sorted or contain duplicates")
+		return nil, errors.WithMessage(ErrInvalidFaults, "faults are not sorted or contain duplicates")
 	}
 
 	verdictSummaries, err := ds.SummarizeVerdicts(epoch, verdicts, activeValidators, archivedValidators)
 	if err != nil {
-		return errors.WithMessage(ErrInvalidVerdicts, err.Error())
+		return nil, errors.WithMessage(ErrInvalidVerdicts, err.Error())
 	}
 
 	culpritsByReportHash, culpritKeys, err := groupAndVerifyCulprits(culprits, verdictSummaries)
 	if err != nil {
-		return err
+		return nil, errors.WithStack(err)
 	}
 
 	faultsByReportHash, faultKeys, err := groupAndVerifyFaults(faults, verdictSummaries)
 	if err != nil {
-		return err
+		return nil, errors.WithStack(err)
 	}
 
-	for _, summary := range verdictSummaries {
-		var validVote bool
+	offenders := append(culpritKeys, faultKeys...)
 
+	for _, summary := range verdictSummaries {
+		var expectedVote bool
 		switch summary.ReportLabel {
 		case GoodReportLabel:
-			validVote = true
-
+			expectedVote = true
 			// Faults should contain at least one valid entry.
 			if len(faultsByReportHash[summary.WorkReportHash]) < 1 {
-				return errors.WithMessagef(ErrInvalidFaults, "no valid faults for good report %s", summary.WorkReportHash)
+				return nil, errors.WithMessagef(ErrInvalidFaults, "no valid faults for good report %s", summary.WorkReportHash)
 			}
 			ds.GoodReports = append(ds.GoodReports, summary.WorkReportHash)
 		case BadReportLabel:
-			validVote = false
+			expectedVote = false
 			// Culprits should contain at least two valid entries.
 			if len(culpritsByReportHash[summary.WorkReportHash]) < 2 {
-				return errors.WithMessagef(ErrInvalidCulprits, "not enough valid culprits for bad report %s", summary.WorkReportHash)
+				return nil, errors.WithMessagef(ErrInvalidCulprits, "not enough valid culprits for bad report %s", summary.WorkReportHash)
 			}
 			ds.BadReports = append(ds.BadReports, summary.WorkReportHash)
 		case WonkeyReportLabel:
+			// TODO: wonkey report can have culprits and faults?
 			ds.WonkeyReports = append(ds.WonkeyReports, summary.WorkReportHash)
+			if len(offenders) > 0 {
+				// TODO: check if it is correct?
+				return nil, errors.WithMessagef(ErrInvalidVerdicts, "wonkey report %s should not have offenders", summary.WorkReportHash)
+			}
+			continue
 		default:
 		}
 
@@ -81,25 +89,25 @@ func (ds *DisputeState) Update(
 
 		for _, c := range culpritsByReportHash[summary.WorkReportHash] {
 			if _, ok := effectiveValidatorsSet[string(c.CulpritKey)]; !ok {
-				return errors.WithMessagef(ErrInvalidCulprits, "culprit %s is not an active or archived validator", string(c.CulpritKey))
+				return nil, errors.WithMessagef(ErrInvalidCulprits, "culprit %s is not an active or archived validator", string(c.CulpritKey))
 			}
 		}
 
 		for _, f := range faultsByReportHash[summary.WorkReportHash] {
-			if f.Vote == validVote {
-				return errors.WithMessagef(ErrInvalidFaults, "fault %s has invalid vote: expected %t, got %t", f.WorkReportHash, validVote, f.Vote)
+			// fault should have an against vote of the verdict result
+			if f.Vote == expectedVote {
+				return nil, errors.WithMessagef(ErrInvalidFaults, "fault %s has invalid vote: expected %t, got %t", f.WorkReportHash, expectedVote, f.Vote)
 			}
 			if _, ok := effectiveValidatorsSet[string(f.FaultKey)]; !ok {
-				return errors.WithMessagef(ErrInvalidFaults, "fault %s is not an active or archived validator", string(f.FaultKey))
+				return nil, errors.WithMessagef(ErrInvalidFaults, "fault %s is not an active or archived validator", string(f.FaultKey))
 			}
 		}
 	}
 
-	offenders := append(culpritKeys, faultKeys...)
 	if ds.containsPunishedValidators(offenders) {
-		return errors.New("seen validator already punished in the past")
+		return nil, errors.New("seen validator already punished in the past")
 	}
 	ds.Offenders = append(ds.Offenders, offenders...)
 
-	return nil
+	return offenders, nil
 }

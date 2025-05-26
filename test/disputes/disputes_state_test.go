@@ -100,7 +100,7 @@ func TestDisputeStateTransition(t *testing.T) {
 				expectedDisputeState := toDisputeState(testVector.PostState)
 				expectedOutput := testVector.Output
 
-				err = disputeState.Update(
+				newOffenders, err := disputeState.Update(
 					dispute.Verdicts(verticts),
 					dispute.Culprits(culprits),
 					dispute.Faults(faults),
@@ -118,6 +118,12 @@ func TestDisputeStateTransition(t *testing.T) {
 				require.Equal(t, expectedDisputeState.BadReports, disputeState.BadReports, "Bad reports mismatch")
 				require.Equal(t, expectedDisputeState.WonkeyReports, disputeState.WonkeyReports, "Wonkey reports mismatch")
 				require.Equal(t, len(expectedDisputeState.Offenders), len(disputeState.Offenders), "Offenders length mismatch")
+
+				expectedOffendersMark := make([]ed25519.PublicKey, len(testVector.Output.Ok.OffendersMark))
+				for i, offender := range testVector.Output.Ok.OffendersMark {
+					expectedOffendersMark[i] = ed25519.PublicKey(common.FromHex(offender))
+				}
+				require.Equal(t, expectedOffendersMark, newOffenders, "Offenders mark mismatch")
 			})
 		}
 	})
