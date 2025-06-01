@@ -4,7 +4,7 @@ import (
 	"github.com/shunsukew/gojam/internal/dispute"
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/internal/validator/safrole"
-	"github.com/shunsukew/gojam/internal/work"
+	workreport "github.com/shunsukew/gojam/internal/work/report"
 )
 
 // Hasing Extrinsic
@@ -34,9 +34,9 @@ type GuaranteesExtrinsic struct {
 
 // (w ∈ W, t ∈ NT, a ∈ ⟦(NV, E)⟧₂:₃)
 type Guarantee struct {
-	WorkReport  *work.WorkReport // w ∈ W
-	Timeslot    jamtime.TimeSlot // t ∈ NT
-	Credentials []*Credential    // TODO: array length must be 2 or 3 (2:3). unique per validator index, order by validator index (11.25) ∀g ∈ EG ∶ ga = [v || (v,s) ∈ ga].
+	WorkReport  *workreport.WorkReport // w ∈ W
+	Timeslot    jamtime.TimeSlot       // t ∈ NT
+	Credentials []*Credential          // TODO: array length must be 2 or 3 (2:3). unique per validator index, order by validator index (11.25) ∀g ∈ EG ∶ ga = [v || (v,s) ∈ ga].
 }
 
 type Credential struct {
@@ -44,7 +44,9 @@ type Credential struct {
 	Signature      []byte // 𝔼
 }
 
-type AssuarancesExtrinsic struct{}
+type AssuarancesExtrinsic struct {
+	Assurances []*workreport.Assurance // at most V number of assurances, one per validator
+}
 
 type DisputesExtrinsic struct {
 	Verdicts []*dispute.Verdict // Verdicts v must be ordered by report hash
