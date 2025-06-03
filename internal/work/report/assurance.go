@@ -22,7 +22,7 @@ type Assurance struct {
 func (assurances Assuances) validate(
 	pendingWorkReports *PendingWorkReports,
 	parentHash common.Hash,
-	validators []*keys.ValidatorKey,
+	validators *[common.NumOfValidators]*keys.ValidatorKey,
 ) error {
 	if len(assurances) > common.NumOfValidators {
 		return errors.WithMessagef(
@@ -58,7 +58,7 @@ func (assurances Assuances) validate(
 func (assurance *Assurance) validate(
 	pendingWorkReports *PendingWorkReports,
 	parentHash common.Hash,
-	validators []*keys.ValidatorKey,
+	validators *[common.NumOfValidators]*keys.ValidatorKey,
 ) error {
 	if assurance.AnchorParentHash != parentHash {
 		return errors.WithMessagef(
@@ -67,6 +67,15 @@ func (assurance *Assurance) validate(
 			assurance.ValidatorIndex,
 			parentHash,
 			assurance.AnchorParentHash,
+		)
+	}
+
+	if assurance.ValidatorIndex >= common.NumOfValidators {
+		return errors.WithMessagef(
+			ErrInvalidAssuance,
+			"assurance validator index %d is out of bounds, must be less than %d",
+			assurance.ValidatorIndex,
+			common.NumOfValidators,
 		)
 	}
 
@@ -84,7 +93,7 @@ func (assurance *Assurance) validate(
 	}
 
 	for coreIndex, availability := range assurance.WorkReportAvailabilities {
-		isAvailable := availability == 1
+		isAvailable := availability != 0
 		if isAvailable && pendingWorkReports[coreIndex] == nil {
 			return errors.WithMessagef(
 				ErrInvalidAssuance,

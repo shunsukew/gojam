@@ -1,6 +1,7 @@
 package workreport
 
 import (
+	"github.com/shunsukew/gojam/internal/service"
 	"github.com/shunsukew/gojam/internal/work"
 	"github.com/shunsukew/gojam/pkg/common"
 )
@@ -17,7 +18,7 @@ const (
 type WorkReport struct {
 	AvailabilitySpecification *AvailabilitySpecification  // s ∈ S
 	RefinementContext         *work.RefinementContext     // x ∈ X
-	CoreIndex                 uint8                       // c ∈ NC
+	CoreIndex                 uint32                      // c ∈ NC
 	AuthorizerHash            common.Hash                 // a ∈ H
 	Output                    []byte                      // o ∈ Y
 	SegmentRootLookup         map[common.Hash]common.Hash // l ∈ D⟨H→H⟩
@@ -35,11 +36,11 @@ type AvailabilitySpecification struct {
 
 // (11.6) L ≡ (s ∈ NS , c ∈ H, l ∈ H, g ∈ NG , o ∈ Y ∪ J)
 type WorkResult struct {
-	ServiceIndex    uint32      // s ∈ NS
-	ServiceCodeHash common.Hash // c ∈ H
-	PayloadHash     common.Hash // l ∈ H
-	Gas             uint64      // g ∈ NG
-	ExecResult      *ExecResult // o ∈ Y ∪ J
+	ServiceId       service.ServiceId // s ∈ NS
+	ServiceCodeHash common.Hash       // c ∈ H
+	PayloadHash     common.Hash       // l ∈ H
+	Gas             service.Gas       // g ∈ NG
+	ExecResult      *ExecResult       // o ∈ Y ∪ J
 }
 
 type ExecError int

@@ -9,7 +9,7 @@ const (
 	MaxPreimageAvailabilityHistorySize = 3
 )
 
-type ServiceId uint8 // ℕ_S
+type ServiceId uint32 // ℕ_S
 
 type Balance uint64 // ℕ_B
 

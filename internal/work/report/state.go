@@ -17,7 +17,7 @@ type PendingWorkReport struct {
 func (p *PendingWorkReports) AssureAvailabilities(
 	assuances []*Assurance,
 	parentHash common.Hash,
-	validators []*keys.ValidatorKey, // K' posterior current validators keys set should come here.
+	validators *[common.NumOfValidators]*keys.ValidatorKey, // K' posterior current validators keys set should come here.
 ) error {
 	// At this point, PendingWorkReports must be ρ† (intermidiate state after disputes).
 
