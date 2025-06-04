@@ -2,9 +2,11 @@ package workreport
 
 import (
 	"crypto/ed25519"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/shunsukew/gojam/internal/validator/keys"
+	"github.com/shunsukew/gojam/pkg/codec"
 	"github.com/shunsukew/gojam/pkg/common"
 	"github.com/shunsukew/gojam/pkg/crypto"
 	"golang.org/x/crypto/blake2b"
@@ -14,7 +16,7 @@ type Assuances []*Assurance
 
 type Assurance struct {
 	AnchorParentHash         common.Hash             // Anchor of the assurance
-	WorkReportAvailabilities [common.NumOfCores]byte // bitstring of work report availability assurances, one bit per core
+	WorkReportAvailabilities [common.NumOfCores]bool // bitstring of work report availability assurances, one bit per core
 	ValidatorIndex           uint32                  // Index of the validator in the assurance
 	Signature                []byte                  // Signature of the validator ed25519 key
 }
@@ -92,9 +94,11 @@ func (assurance *Assurance) validate(
 		)
 	}
 
-	for coreIndex, availability := range assurance.WorkReportAvailabilities {
-		isAvailable := availability != 0
-		if isAvailable && pendingWorkReports[coreIndex] == nil {
+	fmt.Println("Work report availabilities for validator", assurance.ValidatorIndex, ":", assurance.WorkReportAvailabilities)
+
+	for coreIndex := range common.NumOfCores {
+		assured := assurance.WorkReportAvailabilities[coreIndex]
+		if assured && pendingWorkReports[coreIndex] == nil {
 			return errors.WithMessagef(
 				ErrInvalidAssuance,
 				"assurance for core %d from validator %s marked the pending work report available, but pending work report is nil",
@@ -109,11 +113,31 @@ func (assurance *Assurance) validate(
 
 func verifyAssuranceSignature(
 	parentHash common.Hash,
-	workReportAvailabilities [common.NumOfCores]byte,
+	workReportAvailabilities [common.NumOfCores]bool,
 	publicKey ed25519.PublicKey,
 	signature []byte,
 ) bool {
-	inputHash := blake2b.Sum256(append(parentHash[:], workReportAvailabilities[:]...))
+	encoded := codec.EncodeBitSequence(workReportAvailabilities[:])
+	inputHash := blake2b.Sum256(append(parentHash[:], encoded...))
 	msg := append([]byte(crypto.JamAssuranceStatement), inputHash[:]...)
 	return ed25519.Verify(publicKey, msg, signature)
+}
+
+func EncodeBits(bits []bool) []byte {
+	if len(bits) == 0 {
+		return []byte{}
+	}
+
+	numBytes := (len(bits) + 7) / 8
+	encoded := make([]byte, numBytes)
+
+	for i, bit := range bits {
+		if bit {
+			byteIndex := i / 8
+			bitPosition := i % 8 // LSB-first
+			encoded[byteIndex] |= 1 << bitPosition
+		}
+	}
+
+	return encoded
 }

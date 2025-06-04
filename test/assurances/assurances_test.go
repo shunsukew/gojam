@@ -12,6 +12,7 @@ import (
 	"github.com/shunsukew/gojam/internal/service"
 	"github.com/shunsukew/gojam/internal/validator/keys"
 	"github.com/shunsukew/gojam/internal/work"
+	"github.com/shunsukew/gojam/pkg/codec"
 	"github.com/shunsukew/gojam/pkg/common"
 	"github.com/shunsukew/gojam/pkg/crypto/bandersnatch"
 	"github.com/shunsukew/gojam/pkg/crypto/bls"
@@ -46,15 +47,11 @@ func TestWorkReportAssurances(t *testing.T) {
 				for i, a := range testVector.Input.Assurances {
 					assurances[i] = &workreport.Assurance{
 						AnchorParentHash: a.Anchor,
-						WorkReportAvailabilities: func() [common.NumOfCores]byte {
-							var bitField [common.NumOfCores]byte
-							for j, bit := range common.FromHex(a.BitField) {
-								if j >= common.NumOfCores {
-									break
-								}
-								bitField[j] = bit
-							}
-							return bitField
+						WorkReportAvailabilities: func() [common.NumOfCores]bool {
+							bools := codec.DecodeBitSequence(common.FromHex(a.BitField), common.NumOfCores)
+							var arr [common.NumOfCores]bool
+							copy(arr[:], bools)
+							return arr
 						}(),
 						ValidatorIndex: a.ValidatorIndex,
 						Signature:      common.FromHex(a.Signature),
@@ -85,7 +82,6 @@ func TestWorkReportAssurances(t *testing.T) {
 
 				require.NoError(t, err, "failed to assure availabilities")
 				require.Equal(t, expectedPendingWorkReportsState, pendingWorkReportsState)
-
 				// TODO: Check output
 			})
 		}
@@ -100,7 +96,7 @@ func toPendingWorkReports(availAssignments []*AvailAssignment) *workreport.Pendi
 		}
 
 		pendingWorkReport := &workreport.PendingWorkReport{
-			ReportedAt: assignment.Timeout,
+			ReportedAt: assignment.Timeout - workreport.PendingWorkReportTimeout,
 			WorkReport: &workreport.WorkReport{
 				AvailabilitySpecification: &workreport.AvailabilitySpecification{
 					WorkPackageHash:  assignment.Report.PackageSpec.Hash,
