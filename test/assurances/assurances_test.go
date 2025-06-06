@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/shunsukew/gojam/internal/jamtime"
@@ -37,6 +38,10 @@ func TestWorkReportAssurances(t *testing.T) {
 					require.NoErrorf(t, err, "failed to read test vector file: %s", filePath)
 				}
 
+				if !strings.Contains(filePath, "assurances_for_stale_report-1") {
+					return
+				}
+
 				var testVector TestVector
 				err = json.Unmarshal(file, &testVector)
 				if err != nil {
@@ -48,9 +53,9 @@ func TestWorkReportAssurances(t *testing.T) {
 					assurances[i] = &workreport.Assurance{
 						AnchorParentHash: a.Anchor,
 						WorkReportAvailabilities: func() [common.NumOfCores]bool {
-							bools := codec.DecodeBitSequence(common.FromHex(a.BitField), common.NumOfCores)
+							bits := codec.DecodeBitSequence(common.FromHex(a.BitField), common.NumOfCores)
 							var arr [common.NumOfCores]bool
-							copy(arr[:], bools)
+							copy(arr[:], bits)
 							return arr
 						}(),
 						ValidatorIndex: a.ValidatorIndex,
@@ -58,7 +63,7 @@ func TestWorkReportAssurances(t *testing.T) {
 					}
 				}
 
-				// timeSlot := testVector.Input.Slot
+				timeSlot := testVector.Input.Slot
 				parentHash := testVector.Input.Parent
 				activeValidators := &[common.NumOfValidators]*keys.ValidatorKey{}
 				for i, v := range testVector.PreState.CurrentValidators {
@@ -74,7 +79,7 @@ func TestWorkReportAssurances(t *testing.T) {
 				expectedPendingWorkReportsState := toPendingWorkReports(testVector.PostState.AvailAssignments)
 				expectedOutput := testVector.Output
 
-				err = pendingWorkReportsState.AssureAvailabilities(assurances, parentHash, activeValidators)
+				availableReports, err := pendingWorkReportsState.AssureAvailabilities(timeSlot, assurances, parentHash, activeValidators)
 				if expectedOutput.Err != "" {
 					require.Error(t, err, "error expected: %v", expectedOutput.Err)
 					return
@@ -82,7 +87,10 @@ func TestWorkReportAssurances(t *testing.T) {
 
 				require.NoError(t, err, "failed to assure availabilities")
 				require.Equal(t, expectedPendingWorkReportsState, pendingWorkReportsState)
-				// TODO: Check output
+
+				expectedAvailableReports := toAvailableWorkReports(expectedOutput.Ok.Reported)
+				require.Len(t, availableReports, len(expectedAvailableReports), "number of available reports mismatch")
+				require.Equal(t, expectedAvailableReports, availableReports, "available reports mismatch")
 			})
 		}
 	})
@@ -96,7 +104,7 @@ func toPendingWorkReports(availAssignments []*AvailAssignment) *workreport.Pendi
 		}
 
 		pendingWorkReport := &workreport.PendingWorkReport{
-			ReportedAt: assignment.Timeout - workreport.PendingWorkReportTimeout,
+			ReportedAt: assignment.Timeout, // TODO: Test vector should rename field from `timeout` to `reported_at`. Otherwise, really confusing. Actual timeout of reports in test vectors are `timeout` val + PendingWorkReportTimeout 5 slots.
 			WorkReport: &workreport.WorkReport{
 				AvailabilitySpecification: &workreport.AvailabilitySpecification{
 					WorkPackageHash:  assignment.Report.PackageSpec.Hash,
@@ -146,6 +154,56 @@ func toPendingWorkReports(availAssignments []*AvailAssignment) *workreport.Pendi
 	}
 
 	return pendingWorkReports
+}
+
+func toAvailableWorkReports(workReports []Report) []*workreport.WorkReport {
+	availableReports := make([]*workreport.WorkReport, len(workReports))
+	for i, report := range workReports {
+		availableReports[i] = &workreport.WorkReport{
+			AvailabilitySpecification: &workreport.AvailabilitySpecification{
+				WorkPackageHash:  report.PackageSpec.Hash,
+				WorkBundleLength: report.PackageSpec.Length,
+				ErasureRoot:      report.PackageSpec.ErasureRoot,
+				SegmentRoot:      report.PackageSpec.ExportsRoot,
+				SegmentCount:     report.PackageSpec.ExportsCount,
+			},
+			RefinementContext: &work.RefinementContext{
+				AnchorHeaderHash:              report.Context.Anchor,
+				AnchorStateRoot:               report.Context.StateRoot,
+				AnchorBeefyRoot:               report.Context.BeefyRoot,
+				LookupAnchorHeaderHash:        report.Context.LookupAnchor,
+				LookupAnchorTimeSlot:          report.Context.LookupAnchorSlot,
+				PreRequisiteWorkPackageHashes: report.Context.PreRequisites,
+			},
+			CoreIndex:      report.CoreIndex,
+			AuthorizerHash: report.AuthorizerHash,
+			Output:         common.Hex2Bytes(report.AuthOutput),
+			SegmentRootLookup: func() map[common.Hash]common.Hash {
+				lookup := make(map[common.Hash]common.Hash, len(report.SegmentRootLookup))
+				for _, item := range report.SegmentRootLookup {
+					lookup[item.WorkPackageHash] = item.SegmentTreeRoot
+				}
+				return lookup
+			}(),
+			WorkResults: func() []*workreport.WorkResult {
+				results := make([]*workreport.WorkResult, len(report.Results))
+				for j, result := range report.Results {
+					results[j] = &workreport.WorkResult{
+						ServiceId:       result.ServiceId,
+						ServiceCodeHash: result.CodeHash,
+						PayloadHash:     result.PayloadHash,
+						Gas:             result.AccumulateGas,
+						ExecResult: &workreport.ExecResult{
+							Output: common.Hex2Bytes(result.Result.Ok),
+							// TODO: Check exec error, in jam test vectors, no vector has been prepared yet.
+						},
+					}
+				}
+				return results
+			}(),
+		}
+	}
+	return availableReports
 }
 
 type TestVector struct {

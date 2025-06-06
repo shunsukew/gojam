@@ -15,18 +15,47 @@ type PendingWorkReport struct {
 
 // This method should be called after disputes done, which means intermidiate state ρ†
 func (p *PendingWorkReports) AssureAvailabilities(
+	timeSlot jamtime.TimeSlot,
 	assuances []*Assurance,
 	parentHash common.Hash,
 	validators *[common.NumOfValidators]*keys.ValidatorKey, // K' posterior current validators keys set should come here.
-) error {
+) ([]*WorkReport, error) {
 	// At this point, PendingWorkReports must be ρ† (intermidiate state after disputes).
 
 	err := Assuances(assuances).validate(p, parentHash, validators)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// TODO: Output ρ††
+	assurancesCounter := make(map[uint32]int, common.NumOfCores)
+	for _, assurance := range assuances {
+		for core, available := range assurance.WorkReportAvailabilities {
+			if available {
+				assurancesCounter[uint32(core)] += 1
+			}
+		}
+	}
 
-	return nil
+	// TODO: Output available work reports contains stale ones as long as collecting super majoriry assurances.
+	// Identify how stale work reports are handled later.
+	availableReports := []*WorkReport{}
+	for core, pendingWorkReport := range *p {
+		if pendingWorkReport == nil {
+			continue
+		}
+
+		// Super majority assurance check
+		if count, ok := assurancesCounter[uint32(core)]; ok && count >= common.NumOfSuperMajorityValidators {
+			availableReports = append(availableReports, pendingWorkReport.WorkReport)
+			(*p)[core] = nil // Remove the report as it is now available.
+		}
+
+		// Stale work report check
+		if pendingWorkReport.ReportedAt+PendingWorkReportTimeout <= timeSlot {
+			(*p)[core] = nil // Remove the report if it is too old.
+			continue
+		}
+	}
+
+	return availableReports, nil
 }

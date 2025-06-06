@@ -2,7 +2,6 @@ package workreport
 
 import (
 	"crypto/ed25519"
-	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/shunsukew/gojam/internal/validator/keys"
@@ -93,8 +92,6 @@ func (assurance *Assurance) validate(
 			assurance.ValidatorIndex,
 		)
 	}
-
-	fmt.Println("Work report availabilities for validator", assurance.ValidatorIndex, ":", assurance.WorkReportAvailabilities)
 
 	for coreIndex := range common.NumOfCores {
 		assured := assurance.WorkReportAvailabilities[coreIndex]
