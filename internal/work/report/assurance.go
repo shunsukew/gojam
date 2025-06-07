@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-type Assuances []*Assurance
+type Assurances []*Assurance
 
 type Assurance struct {
 	AnchorParentHash         common.Hash             // Anchor of the assurance
@@ -20,7 +20,7 @@ type Assurance struct {
 	Signature                []byte                  // Signature of the validator ed25519 key
 }
 
-func (assurances Assuances) validate(
+func (assurances Assurances) validate(
 	pendingWorkReports *PendingWorkReports,
 	parentHash common.Hash,
 	validators *[common.NumOfValidators]*keys.ValidatorKey,
