@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	authpool "github.com/shunsukew/gojam/internal/authorizer/pool"
@@ -39,10 +38,6 @@ func TestWorkReportGuarantee(t *testing.T) {
 				file, err := os.ReadFile(filePath)
 				if err != nil {
 					require.NoErrorf(t, err, "failed to read test vector file: %s", filePath)
-				}
-
-				if !strings.Contains(filePath, "assurances_for_stale_report-1") {
-					return
 				}
 
 				var testVector TestVector

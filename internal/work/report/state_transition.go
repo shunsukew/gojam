@@ -2,6 +2,7 @@ package workreport
 
 import (
 	"crypto/ed25519"
+	"fmt"
 
 	"slices"
 
@@ -81,6 +82,8 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 	recentBlocks *history.RecentHistory,
 ) ([]*WorkReport, error) {
 	// At this point, PendingWorkReports must be ρ†† (intermidiate state after availability assurances).
+
+	fmt.Println("HERE Test!!!")
 
 	if len(guarantees) > common.NumOfCores {
 		return nil, ErrTooManyGuarantees
