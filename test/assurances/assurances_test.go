@@ -274,22 +274,21 @@ type WorkResult struct {
 	PayloadHash   common.Hash       `json:"payload_hash"`
 	AccumulateGas service.Gas       `json:"accumulate_gas"`
 	Result        Result            `json:"result"`
-	// TODO: Check what those test data for.
-	// RefineLoad    RefineLoad        `json:"refine_load"`
-	// AuthGasUsed   uint64            `json:"auth_gas_used"`
+	RefineLoad    RefineLoad        `json:"refine_load"`
+	AuthGasUsed   uint64            `json:"auth_gas_used"`
 }
 
 type Result struct {
 	Ok string `json:"ok"`
 }
 
-// type RefineLoad struct {
-// GasUsed        uint64 `json:"gas_used"`
-// Imports        uint32 `json:"imports"`
-// ExtrinsicCount uint32 `json:"extrinsic_count"`
-// ExtrinsicSize  uint32 `json:"extrinsic_size"`
-// Exports        uint32 `json:"exports"`
-// }
+type RefineLoad struct {
+	GasUsed        uint64 `json:"gas_used"`
+	Imports        uint32 `json:"imports"`
+	ExtrinsicCount uint32 `json:"extrinsic_count"`
+	ExtrinsicSize  uint32 `json:"extrinsic_size"`
+	Exports        uint32 `json:"exports"`
+}
 
 type ValidatorKey struct {
 	Bandersnatch bandersnatch.PublicKey `json:"bandersnatch"`

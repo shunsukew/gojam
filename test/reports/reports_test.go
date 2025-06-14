@@ -1,6 +1,7 @@
 package reports_test
 
 import (
+	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -8,17 +9,24 @@ import (
 	"strings"
 	"testing"
 
+	authpool "github.com/shunsukew/gojam/internal/authorizer/pool"
+	"github.com/shunsukew/gojam/internal/entropy"
+	"github.com/shunsukew/gojam/internal/history"
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/internal/service"
+	"github.com/shunsukew/gojam/internal/validator/keys"
+	"github.com/shunsukew/gojam/internal/work"
+	workreport "github.com/shunsukew/gojam/internal/work/report"
 	"github.com/shunsukew/gojam/pkg/common"
 	"github.com/shunsukew/gojam/pkg/crypto/bandersnatch"
 	"github.com/shunsukew/gojam/pkg/crypto/bls"
+	"github.com/shunsukew/gojam/pkg/mmr"
 	test_utils "github.com/shunsukew/gojam/test/utils"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestWorkReportAssurances(t *testing.T) {
+func TestWorkReportGuarantee(t *testing.T) {
 	t.Run(testSpec, func(t *testing.T) {
 		filePaths, err := test_utils.GetJsonFilePaths(vectorFolderPath)
 		if err != nil {
@@ -43,10 +51,211 @@ func TestWorkReportAssurances(t *testing.T) {
 					require.NoError(t, err, "failed to unmarshal test vector: %s", filePath)
 				}
 
-				// TODO
+				pendingWorkReportsState := toPendingWorkReports(testVector.PreState.AvailAssignments)
+				expectedPendingWorkReportsState := toPendingWorkReports(testVector.PostState.AvailAssignments)
+				expectedOutput := testVector.Output
+
+				_, err = pendingWorkReportsState.GuaranteeNewWorkReports(
+					toGuarantees(testVector.Input.Guarantees),
+					testVector.Input.Slot,
+					toEntropyPool(testVector.PreState.Entropy),
+					toValidatorKeys(testVector.PreState.CurrentValidators),
+					toValidatorKeys(testVector.PreState.PrevValidators),
+					toAuthorizerPools(testVector.PreState.AuthPools),
+					toServices(testVector.PreState.Accounts),
+					toRecentHistory(testVector.PreState.RecentBlocks),
+				)
+				if expectedOutput.Err != "" {
+					require.Error(t, err, "error expected: %v", expectedOutput.Err)
+					return
+				}
+
+				require.NoError(t, err, "failed to guarantee new work reports")
+				require.Equal(t, len(expectedPendingWorkReportsState), len(*pendingWorkReportsState), "length of pending work reports should match")
+				require.Equal(t, expectedPendingWorkReportsState, pendingWorkReportsState, "pending work reports state should match expected state")
 			})
 		}
 	})
+}
+
+func toGuarantees(input []Guarantee) workreport.Guarantees {
+	guarantees := make(workreport.Guarantees, len(input))
+	for i, g := range input {
+		guarantees[i] = &workreport.Guarantee{
+			Timeslot: g.Slot,
+			Credentials: func() []*workreport.Credential {
+				credentials := make([]*workreport.Credential, len(g.Signatures))
+				for j, sig := range g.Signatures {
+					credentials[j] = &workreport.Credential{
+						ValidatorIndex: sig.ValidatorIndex,
+						Signature:      common.Hex2Bytes(sig.Signature),
+					}
+				}
+				return credentials
+			}(),
+			WorkReport: &workreport.WorkReport{
+				AvailabilitySpecification: &workreport.AvailabilitySpecification{
+					WorkPackageHash:  g.Report.PackageSpec.Hash,
+					WorkBundleLength: g.Report.PackageSpec.Length,
+					ErasureRoot:      g.Report.PackageSpec.ErasureRoot,
+					SegmentRoot:      g.Report.PackageSpec.ExportsRoot,
+					SegmentCount:     g.Report.PackageSpec.ExportsCount,
+				},
+				RefinementContext: &work.RefinementContext{
+					AnchorHeaderHash:              g.Report.Context.Anchor,
+					AnchorStateRoot:               g.Report.Context.StateRoot,
+					AnchorBeefyRoot:               g.Report.Context.BeefyRoot,
+					LookupAnchorHeaderHash:        g.Report.Context.LookupAnchor,
+					LookupAnchorTimeSlot:          g.Report.Context.LookupAnchorSlot,
+					PreRequisiteWorkPackageHashes: g.Report.Context.PreRequisites,
+				},
+				CoreIndex:      g.Report.CoreIndex,
+				AuthorizerHash: g.Report.AuthorizerHash,
+				Output:         common.Hex2Bytes(g.Report.AuthOutput),
+				SegmentRootLookup: func() map[common.Hash]common.Hash {
+					lookup := make(map[common.Hash]common.Hash, len(g.Report.SegmentRootLookup))
+					for _, item := range g.Report.SegmentRootLookup {
+						lookup[item.WorkPackageHash] = item.SegmentTreeRoot
+					}
+					return lookup
+				}(),
+				WorkResults: func() []*workreport.WorkResult {
+					results := make([]*workreport.WorkResult, len(g.Report.Results))
+					for j, result := range g.Report.Results {
+						results[j] = &workreport.WorkResult{
+							ServiceId:       result.ServiceId,
+							ServiceCodeHash: result.CodeHash,
+							PayloadHash:     result.PayloadHash,
+							Gas:             result.AccumulateGas,
+							ExecResult: &workreport.ExecResult{
+								Output: common.Hex2Bytes(result.Result.Ok),
+								// TODO: Check exec error, in jam test vectors, no vector has been prepared yet.
+							},
+						}
+					}
+					return results
+				}(),
+			},
+		}
+	}
+	return guarantees
+}
+
+func toValidatorKeys(input []ValidatorKey) *[common.NumOfValidators]*keys.ValidatorKey {
+	validatorKeys := &[common.NumOfValidators]*keys.ValidatorKey{}
+	for i, v := range input {
+		validatorKeys[i] = &keys.ValidatorKey{
+			BandersnatchPublicKey: v.Bandersnatch,
+			Ed25519PublicKey:      ed25519.PublicKey(common.FromHex(v.Ed25519)),
+			BLSKey:                v.Bls,
+			Metadata:              [keys.ValidatorKeyMetadataSize]byte(common.FromHex(v.Metadata)),
+		}
+	}
+	return validatorKeys
+}
+
+func toEntropyPool(input []common.Hash) *entropy.EntropyPool {
+	entropyPool := entropy.EntropyPool{}
+	for i := range len(entropyPool) {
+		entropyPool[i] = input[i]
+	}
+	return &entropyPool
+}
+
+func toAuthorizerPools(input []AuthPool) *authpool.AuthorizerPools {
+	authorizerPools := authpool.AuthorizerPools{}
+	for i, pool := range input {
+		authorizerPools[i] = make([]common.Hash, len(pool))
+		copy(authorizerPools[i], pool)
+	}
+	return &authorizerPools
+}
+
+func toPendingWorkReports(availAssignments []*AvailAssignment) *workreport.PendingWorkReports {
+	pendingWorkReports := &workreport.PendingWorkReports{}
+	for i, assignment := range availAssignments {
+		if assignment == nil {
+			continue
+		}
+
+		pendingWorkReport := &workreport.PendingWorkReport{
+			ReportedAt: assignment.Timeout, // TODO: Test vector should rename field from `timeout` to `reported_at`. Otherwise, really confusing. Actual timeout of reports in test vectors are `timeout` val + PendingWorkReportTimeout 5 slots.
+			WorkReport: &workreport.WorkReport{
+				AvailabilitySpecification: &workreport.AvailabilitySpecification{
+					WorkPackageHash:  assignment.Report.PackageSpec.Hash,
+					WorkBundleLength: assignment.Report.PackageSpec.Length,
+					ErasureRoot:      assignment.Report.PackageSpec.ErasureRoot,
+					SegmentRoot:      assignment.Report.PackageSpec.ExportsRoot,
+					SegmentCount:     assignment.Report.PackageSpec.ExportsCount,
+				},
+				RefinementContext: &work.RefinementContext{
+					AnchorHeaderHash:              assignment.Report.Context.Anchor,
+					AnchorStateRoot:               assignment.Report.Context.StateRoot,
+					AnchorBeefyRoot:               assignment.Report.Context.BeefyRoot,
+					LookupAnchorHeaderHash:        assignment.Report.Context.LookupAnchor,
+					LookupAnchorTimeSlot:          assignment.Report.Context.LookupAnchorSlot,
+					PreRequisiteWorkPackageHashes: assignment.Report.Context.PreRequisites,
+				},
+				CoreIndex:      assignment.Report.CoreIndex,
+				AuthorizerHash: assignment.Report.AuthorizerHash,
+				Output:         common.Hex2Bytes(assignment.Report.AuthOutput),
+				SegmentRootLookup: func() map[common.Hash]common.Hash {
+					lookup := make(map[common.Hash]common.Hash, len(assignment.Report.SegmentRootLookup))
+					for _, item := range assignment.Report.SegmentRootLookup {
+						lookup[item.WorkPackageHash] = item.SegmentTreeRoot
+					}
+					return lookup
+				}(),
+				WorkResults: func() []*workreport.WorkResult {
+					results := make([]*workreport.WorkResult, len(assignment.Report.Results))
+					for j, result := range assignment.Report.Results {
+						results[j] = &workreport.WorkResult{
+							ServiceId:       result.ServiceId,
+							ServiceCodeHash: result.CodeHash,
+							PayloadHash:     result.PayloadHash,
+							Gas:             result.AccumulateGas,
+							ExecResult: &workreport.ExecResult{
+								Output: common.Hex2Bytes(result.Result.Ok),
+							},
+						}
+					}
+					return results
+				}(),
+			},
+		}
+
+		pendingWorkReports[i] = pendingWorkReport
+	}
+
+	return pendingWorkReports
+}
+
+func toServices(input []Account) *service.Services {
+	services := &service.Services{}
+	for _, account := range input {
+		services.Save(account.Id, &service.ServiceAccount{
+			CodeHash: account.Data.Service.CodeHash,
+			Balance:  account.Data.Service.Balance,
+		})
+	}
+	return services
+}
+
+func toRecentHistory(input []RecentBlock) *history.RecentHistory {
+	recentHistory := &history.RecentHistory{}
+	for _, block := range input {
+		recentBlock := &history.RecentBlock{
+			HeaderHash:            block.HeaderHash,
+			StateRoot:             block.StateRoot,
+			AccumulationResultMMR: *(*mmr.MMR)(&block.MMR.Peaks),
+			WorkPackageHashes:     make(map[common.Hash]common.Hash),
+		}
+		for _, reported := range block.Reported {
+			recentBlock.WorkPackageHashes[reported.Hash] = reported.ExportsRoot
+		}
+		*recentHistory = append(*recentHistory, recentBlock)
+	}
+	return recentHistory
 }
 
 type TestVector struct {

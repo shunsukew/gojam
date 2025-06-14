@@ -1,6 +1,7 @@
 package workreport
 
 import (
+	"github.com/pkg/errors"
 	"github.com/shunsukew/gojam/internal/service"
 	"github.com/shunsukew/gojam/internal/work"
 	"github.com/shunsukew/gojam/pkg/common"
@@ -48,4 +49,35 @@ type ExecError int
 type ExecResult struct {
 	Output []byte    // Y
 	Error  ExecError // J ∈ {∞, ☇, ⊚, BAD, BIG}
+}
+
+func (wr *WorkReport) validateGasRequirements(services *service.Services) error {
+	totalGas := service.Gas(0)
+	for _, workResult := range wr.WorkResults {
+		service, ok := services.Get(workResult.ServiceId)
+		if !ok {
+			return errors.WithMessagef(ErrInvalidWorkReport, "service %d not found", workResult.ServiceId)
+		}
+
+		// each work result gas must be greater than or equal to the service's minimum accumulate gas requirement
+		if workResult.Gas < service.AccumulateGas {
+			return errors.WithMessagef(
+				ErrInvalidWorkReport, "work result gas %d doesn't satisfy service accumulate minimum gas requirement %d of id %d",
+				workResult.Gas, service.AccumulateGas, workResult.ServiceId,
+			)
+		}
+
+		totalGas += workResult.Gas
+	}
+
+	// overall work report gas must be lower than G_A
+	if totalGas > service.WorkReportAccumulationGasLimit {
+		return errors.WithMessagef(
+			ErrInvalidWorkReport,
+			"total gas %d of work report exceeds the work report accumulation gas limit %d",
+			totalGas, service.WorkReportAccumulationGasLimit,
+		)
+	}
+
+	return nil
 }
