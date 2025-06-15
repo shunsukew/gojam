@@ -28,7 +28,7 @@ func (guarantees Guarantees) validateCoreIndices() error {
 type Guarantee struct {
 	WorkReport  *WorkReport      // w ∈ W
 	Timeslot    jamtime.TimeSlot // t ∈ NT
-	Credentials []*Credential    // TODO: array length must be 2 or 3 (2:3). unique per validator index, order by validator index (11.25) ∀g ∈ EG ∶ ga = [v || (v,s) ∈ ga].
+	Credentials []*Credential    // a: unique per validator index, order by validator index (11.25) ∀g ∈ EG ∶ ga = [v || (v,s) ∈ ga].
 }
 
 type Credential struct {

@@ -66,7 +66,6 @@ func TestWorkReportGuarantee(t *testing.T) {
 				}
 
 				require.NoError(t, err, "failed to guarantee new work reports")
-				require.Equal(t, len(expectedPendingWorkReportsState), len(*pendingWorkReportsState), "length of pending work reports should match")
 				require.Equal(t, expectedPendingWorkReportsState, pendingWorkReportsState, "pending work reports state should match expected state")
 			})
 		}

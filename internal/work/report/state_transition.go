@@ -2,9 +2,10 @@ package workreport
 
 import (
 	"crypto/ed25519"
-	"fmt"
 
 	"slices"
+
+	"maps"
 
 	"github.com/pkg/errors"
 	authpool "github.com/shunsukew/gojam/internal/authorizer/pool"
@@ -80,10 +81,8 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 	authorizerPools *authpool.AuthorizerPools,
 	services *service.Services,
 	recentBlocks *history.RecentHistory,
-) ([]*WorkReport, error) {
+) ([]ed25519.PublicKey, error) {
 	// At this point, PendingWorkReports must be ρ†† (intermidiate state after availability assurances).
-
-	fmt.Println("HERE Test!!!")
 
 	if len(guarantees) > common.NumOfCores {
 		return nil, ErrTooManyGuarantees
@@ -104,9 +103,9 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 
 	workReports := make([]*WorkReport, len(guarantees))
 	reporters := make([]ed25519.PublicKey, 0, len(guarantees)*MaxCredentialsInGuarantee)
-	refinementContexts := make([]*work.RefinementContext, len(guarantees))
-	workPackageHashes := make([]common.Hash, len(guarantees))
-	seenWorkPackageHashes := make(map[common.Hash]struct{}, len(guarantees))
+	refinementContexts := make([]*work.RefinementContext, len(guarantees)) // intermidiate variable x
+	workPackageHashes := make(map[common.Hash]struct{}, len(guarantees))   // intermidiate variable p
+	segmentRootLookups := make(map[common.Hash]common.Hash, len(workReports))
 
 	for i, guarantee := range guarantees {
 		guarantorAssignments := currentGuarantorAssignments
@@ -124,12 +123,12 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 		workReports[i] = guarantee.WorkReport
 		reporters = append(reporters, guarantors...)
 		refinementContexts[i] = guarantee.WorkReport.RefinementContext
-		workPackageHashes[i] = guarantee.WorkReport.AvailabilitySpecification.WorkPackageHash
-		seenWorkPackageHashes[guarantee.WorkReport.AvailabilitySpecification.WorkPackageHash] = struct{}{}
+		workPackageHashes[guarantee.WorkReport.AvailabilitySpecification.WorkPackageHash] = struct{}{}
+		segmentRootLookups[guarantee.WorkReport.AvailabilitySpecification.WorkPackageHash] = guarantee.WorkReport.AvailabilitySpecification.SegmentRoot
 	}
 
 	// compare cardinality of work package hashes in guarantees extrinsic with the number of work reports.
-	if len(seenWorkPackageHashes) != len(workReports) {
+	if len(workPackageHashes) != len(workReports) {
 		return nil, errors.WithMessagef(ErrInvalidGuarantees, "work package hash must be unique in guarantees extrinsic")
 	}
 
@@ -150,6 +149,11 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 		if err != nil {
 			return nil, err
 		}
+
+		err = workReport.validateWorkResults(services)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, rc := range refinementContexts {
@@ -159,5 +163,32 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 		}
 	}
 
-	return nil, nil
+	recentWorkPackageHashes := workPackageHashes   // work package hashes in the incoming block + ones in recent history
+	recentSegmentRootLookups := segmentRootLookups // segment roots in the incoming block + ones in recent history
+	for _, recentBlock := range *recentBlocks {
+		for workPackageHash := range recentBlock.WorkPackageHashes {
+			recentWorkPackageHashes[workPackageHash] = struct{}{}
+			maps.Copy(recentSegmentRootLookups, recentBlock.WorkPackageHashes)
+		}
+	}
+
+	err = (*WorkReports)(&workReports).ensureDependenciesExist(recentWorkPackageHashes)
+	if err != nil {
+		return nil, err
+	}
+
+	err = (*WorkReports)(&workReports).ensureSegmentRoots(recentSegmentRootLookups)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update ρ after all validations passed
+	for _, guarantee := range guarantees {
+		p[guarantee.WorkReport.CoreIndex] = &PendingWorkReport{
+			ReportedAt: timeSlot,
+			WorkReport: guarantee.WorkReport,
+		}
+	}
+
+	return reporters, nil
 }

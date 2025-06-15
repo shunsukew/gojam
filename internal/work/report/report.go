@@ -15,6 +15,53 @@ const (
 	CodeTooBig         ExecError = iota // BIG
 )
 
+type WorkReports []*WorkReport
+
+func (wr *WorkReports) ensureDependenciesExist(recentWorkPackageHashes map[common.Hash]struct{}) error {
+	dependencies := wr.extractDependencyWorkPackageHashes()
+
+	for dep := range dependencies {
+		if _, ok := recentWorkPackageHashes[dep]; !ok {
+			return errors.WithMessagef(ErrInvalidWorkReport, "dependency work package hash %s does not exist in recent work packages", dep)
+		}
+	}
+
+	return nil
+}
+
+// TODO: Convert output to map of work report hash to dependency work package hashes, so that we can know which work report has invalid dependencies in error msg and logging.
+func (wr *WorkReports) extractDependencyWorkPackageHashes() map[common.Hash]struct{} {
+	workPackageHashes := make(map[common.Hash]struct{})
+	for _, report := range *wr {
+		for _, preRequisiteWorkPackageHash := range report.RefinementContext.PreRequisiteWorkPackageHashes {
+			workPackageHashes[preRequisiteWorkPackageHash] = struct{}{}
+		}
+
+		for workPackageHash := range report.SegmentRootLookup {
+			workPackageHashes[workPackageHash] = struct{}{}
+		}
+	}
+
+	return workPackageHashes
+}
+
+func (wr *WorkReports) ensureSegmentRoots(recentSegmentRootLookups map[common.Hash]common.Hash) error {
+	for _, report := range *wr {
+		// check map report.SegmentRootLookup map[common.Hash]common.Hash all key-val paris exists in recentSegmentRootLookups
+		for workPackageHash, expected := range report.SegmentRootLookup {
+			actual, ok := recentSegmentRootLookups[workPackageHash]
+			if !ok {
+				return errors.WithMessagef(ErrInvalidWorkReport, "missing segment root for work package hash %s", workPackageHash)
+			}
+			if actual != expected {
+				return errors.WithMessagef(ErrInvalidWorkReport, "segment root for work package hash %s does not match: expected %s, got %s", workPackageHash, expected, actual)
+			}
+		}
+	}
+
+	return nil
+}
+
 // (11.2) W ≡ (s ∈ S, x ∈ X, c ∈ NC, a ∈ H, o ∈ Y, l ∈ D⟨H→H⟩, r ∈ ⟦L⟧1:I)
 type WorkReport struct {
 	AvailabilitySpecification *AvailabilitySpecification  // s ∈ S
@@ -22,7 +69,7 @@ type WorkReport struct {
 	CoreIndex                 uint32                      // c ∈ NC
 	AuthorizerHash            common.Hash                 // a ∈ H
 	Output                    []byte                      // o ∈ Y
-	SegmentRootLookup         map[common.Hash]common.Hash // l ∈ D⟨H→H⟩
+	SegmentRootLookup         map[common.Hash]common.Hash // l ∈ D⟨H→H⟩ work package hash to segment root
 	WorkResults               []*WorkResult               // r ∈ ⟦L⟧1:I cannot be empty
 }
 
@@ -77,6 +124,22 @@ func (wr *WorkReport) validateGasRequirements(services *service.Services) error 
 			"total gas %d of work report exceeds the work report accumulation gas limit %d",
 			totalGas, service.WorkReportAccumulationGasLimit,
 		)
+	}
+
+	return nil
+}
+
+func (wr *WorkReport) validateWorkResults(services *service.Services) error {
+	for _, workResult := range wr.WorkResults {
+		service, ok := services.Get(workResult.ServiceId)
+		if !ok {
+			return errors.WithMessagef(ErrInvalidWorkReport, "work result service %d not found", workResult.ServiceId)
+		}
+
+		if workResult.ServiceCodeHash != service.CodeHash {
+			return errors.WithMessagef(ErrInvalidWorkReport, "work result service code hash %s does not match service code hash %s for service %d",
+				workResult.ServiceCodeHash, service.CodeHash, workResult.ServiceId)
+		}
 	}
 
 	return nil
