@@ -5,6 +5,7 @@ import (
 	"github.com/shunsukew/gojam/internal/history"
 	"github.com/shunsukew/gojam/internal/jamtime"
 	"github.com/shunsukew/gojam/pkg/common"
+	"github.com/shunsukew/gojam/pkg/safemath"
 )
 
 type RefinementContext struct {
@@ -17,21 +18,27 @@ type RefinementContext struct {
 }
 
 func (rc *RefinementContext) ValidateAnchors(timeSlot jamtime.TimeSlot, recentBlocks *history.RecentHistory) error {
-	var anchorBlockExists bool
+	var anchorBlock *history.RecentBlock
 	for _, block := range *recentBlocks {
-		if rc.AnchorHeaderHash == block.HeaderHash &&
-			rc.AnchorStateRoot == block.StateRoot &&
-			rc.AnchorBeefyRoot == block.AccumulationResultMMR.SuperPeak() {
-			anchorBlockExists = true
+		if rc.AnchorHeaderHash == block.HeaderHash {
+			anchorBlock = block
 			break
 		}
 	}
-
-	if !anchorBlockExists {
-		return errors.WithMessagef(ErrInvalidRefinementContext, "anchor block %s does not exist in recent blocks", rc.AnchorHeaderHash)
+	if anchorBlock == nil {
+		return errors.WithMessagef(ErrInvalidRefinementContext, "anchor header hash %s does not exist in recent blocks", rc.AnchorHeaderHash.ToHex())
+	}
+	if rc.AnchorStateRoot != anchorBlock.StateRoot {
+		return errors.WithMessagef(ErrInvalidRefinementContext, "anchor state root %s does not match state root %s for anchor header hash %s",
+			rc.AnchorStateRoot.ToHex(), anchorBlock.StateRoot.ToHex(), rc.AnchorHeaderHash.ToHex())
+	}
+	if rc.AnchorBeefyRoot != anchorBlock.AccumulationResultMMR.SuperPeak() {
+		anchorBlockBeefyRoot := anchorBlock.AccumulationResultMMR.SuperPeak()
+		return errors.WithMessagef(ErrInvalidRefinementContext, "anchor beefy root %s does not match beefy root %s for anchor header hash %s",
+			rc.AnchorBeefyRoot.ToHex(), anchorBlockBeefyRoot.ToHex(), rc.AnchorHeaderHash.ToHex())
 	}
 
-	if rc.LookupAnchorTimeSlot < timeSlot-jamtime.MaxLookupAnchorAge {
+	if rc.LookupAnchorTimeSlot < safemath.SaturatingSub(timeSlot, jamtime.MaxLookupAnchorAge) {
 		return errors.WithMessagef(ErrInvalidRefinementContext, "lookup anchor time slot %d is too old, must be within %d time slots from current time slot %d",
 			rc.LookupAnchorTimeSlot, jamtime.MaxLookupAnchorAge, timeSlot)
 	}

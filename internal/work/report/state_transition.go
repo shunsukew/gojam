@@ -88,9 +88,9 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 		return nil, ErrTooManyGuarantees
 	}
 
-	err := guarantees.validateCoreIndices()
+	err := guarantees.ensureValidCoreIndices()
 	if err != nil {
-		return nil, errors.WithMessagef(ErrInvalidGuarantees, "guarantees must be sorted and non-duplicate core indices")
+		return nil, err
 	}
 
 	// G together with currentGuarantors

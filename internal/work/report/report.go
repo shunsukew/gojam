@@ -22,7 +22,7 @@ func (wr *WorkReports) ensureDependenciesExist(recentWorkPackageHashes map[commo
 
 	for dep := range dependencies {
 		if _, ok := recentWorkPackageHashes[dep]; !ok {
-			return errors.WithMessagef(ErrInvalidWorkReport, "dependency work package hash %s does not exist in recent work packages", dep)
+			return errors.WithMessagef(ErrInvalidWorkReport, "dependency work package hash %s does not exist in recent work packages", dep.ToHex())
 		}
 	}
 
@@ -51,10 +51,10 @@ func (wr *WorkReports) ensureSegmentRoots(recentSegmentRootLookups map[common.Ha
 		for workPackageHash, expected := range report.SegmentRootLookup {
 			actual, ok := recentSegmentRootLookups[workPackageHash]
 			if !ok {
-				return errors.WithMessagef(ErrInvalidWorkReport, "missing segment root for work package hash %s", workPackageHash)
+				return errors.WithMessagef(ErrInvalidWorkReport, "missing segment root for work package hash %s", workPackageHash.ToHex())
 			}
 			if actual != expected {
-				return errors.WithMessagef(ErrInvalidWorkReport, "segment root for work package hash %s does not match: expected %s, got %s", workPackageHash, expected, actual)
+				return errors.WithMessagef(ErrInvalidWorkReport, "segment root for work package hash %s does not match: expected %s, got %s", workPackageHash.ToHex(), expected.ToHex(), actual.ToHex())
 			}
 		}
 	}
@@ -138,7 +138,7 @@ func (wr *WorkReport) validateWorkResults(services *service.Services) error {
 
 		if workResult.ServiceCodeHash != service.CodeHash {
 			return errors.WithMessagef(ErrInvalidWorkReport, "work result service code hash %s does not match service code hash %s for service %d",
-				workResult.ServiceCodeHash, service.CodeHash, workResult.ServiceId)
+				workResult.ServiceCodeHash.ToHex(), service.CodeHash.ToHex(), workResult.ServiceId)
 		}
 	}
 

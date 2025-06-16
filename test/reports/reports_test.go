@@ -25,6 +25,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// It is known issue on test vector side
+// case segment_root_lookup_invalid-1 has invalid dependency work package hashes, thus may not get the error of invalid segment root lookup.
+
 func TestWorkReportGuarantee(t *testing.T) {
 	t.Run(testSpec, func(t *testing.T) {
 		filePaths, err := test_utils.GetJsonFilePaths(vectorFolderPath)
@@ -39,6 +42,10 @@ func TestWorkReportGuarantee(t *testing.T) {
 				if err != nil {
 					require.NoErrorf(t, err, "failed to read test vector file: %s", filePath)
 				}
+
+				// if !strings.Contains(filePath, "segment_root_lookup_invalid-1") {
+				// return
+				// }
 
 				var testVector TestVector
 				err = json.Unmarshal(file, &testVector)
@@ -60,6 +67,7 @@ func TestWorkReportGuarantee(t *testing.T) {
 					toServices(testVector.PreState.Accounts),
 					toRecentHistory(testVector.PreState.RecentBlocks),
 				)
+				fmt.Println(err)
 				if expectedOutput.Err != "" {
 					require.Error(t, err, "error expected: %v", expectedOutput.Err)
 					return

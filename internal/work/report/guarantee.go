@@ -12,7 +12,13 @@ import (
 
 type Guarantees []*Guarantee
 
-func (guarantees Guarantees) validateCoreIndices() error {
+func (guarantees Guarantees) ensureValidCoreIndices() error {
+	if len(guarantees) != 0 {
+		if guarantees[0].WorkReport.CoreIndex >= common.NumOfCores {
+			return errors.WithMessage(ErrInvalidGuarantees, "core index out of range")
+		}
+	}
+
 	for i := 1; i < len(guarantees); i++ {
 		if guarantees[i].WorkReport.CoreIndex >= common.NumOfCores {
 			return errors.WithMessage(ErrInvalidGuarantees, "core index out of range")
@@ -21,6 +27,7 @@ func (guarantees Guarantees) validateCoreIndices() error {
 			return errors.WithMessage(ErrInvalidGuarantees, "guarantees must be ordered by core index and unique")
 		}
 	}
+
 	return nil
 }
 
@@ -38,9 +45,10 @@ type Credential struct {
 
 func (guarantee *Guarantee) checkGuaranteedWorkReport(timeSlot jamtime.TimeSlot, guarantorAssignments *GuarantorAssignments, guarantorKeys *[common.NumOfValidators]*keys.ValidatorKey) ([]ed25519.PublicKey, error) {
 	// guarantee timeslot must be between start of prev guarantor assignment rotation period and current timeslot.
-	startOfPrevRotationPeriod := (timeSlot/jamtime.GuarantorRotationPeriod - 1) * jamtime.GuarantorRotationPeriod
-	if timeSlot.Before(startOfPrevRotationPeriod) {
-		return nil, errors.WithMessagef(ErrInvalidGuarantee, "guarantee timeslot %d is before the start of previous guarantor rotation period %d", guarantee.Timeslot, startOfPrevRotationPeriod)
+	startOfLastRotationPeriod := (timeSlot/jamtime.GuarantorRotationPeriod - 1) * jamtime.GuarantorRotationPeriod
+
+	if guarantee.Timeslot.Before(startOfLastRotationPeriod) {
+		return nil, errors.WithMessagef(ErrInvalidGuarantee, "guarantee timeslot %d is before the start of previous guarantor rotation period %d", guarantee.Timeslot, startOfLastRotationPeriod)
 	}
 	if guarantee.Timeslot.After(timeSlot) {
 		return nil, errors.WithMessagef(ErrInvalidGuarantee, "guarantee timeslot %d is after current timeslot %d", guarantee.Timeslot, timeSlot)
