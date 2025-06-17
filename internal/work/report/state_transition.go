@@ -144,6 +144,10 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 			return nil, errors.WithMessagef(ErrInvalidWorkReport, "work report authorizer hash in core %d doesn't exist in authorizer queue", workReport.CoreIndex)
 		}
 
+		if workReport.outputSize() > MaxWorkReportOutputsSize {
+			return nil, errors.WithMessagef(ErrInvalidWorkReport, "work report output size %d exceeds maximum allowed size %d", workReport.outputSize(), MaxWorkReportOutputsSize)
+		}
+
 		// Check work report validity
 		err = workReport.validateGasRequirements(services)
 		if err != nil {
@@ -172,7 +176,7 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 		}
 	}
 
-	err = (*WorkReports)(&workReports).ensureDependenciesExist(recentWorkPackageHashes)
+	err = (*WorkReports)(&workReports).ensureValidDependencies(recentWorkPackageHashes)
 	if err != nil {
 		return nil, err
 	}

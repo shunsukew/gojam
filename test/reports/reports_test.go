@@ -43,7 +43,7 @@ func TestWorkReportGuarantee(t *testing.T) {
 					require.NoErrorf(t, err, "failed to read test vector file: %s", filePath)
 				}
 
-				// if !strings.Contains(filePath, "segment_root_lookup_invalid-1") {
+				// if !strings.Contains(filePath, "too_big_work_report_output") {
 				// return
 				// }
 
@@ -90,7 +90,7 @@ func toGuarantees(input []Guarantee) workreport.Guarantees {
 				for j, sig := range g.Signatures {
 					credentials[j] = &workreport.Credential{
 						ValidatorIndex: sig.ValidatorIndex,
-						Signature:      common.Hex2Bytes(sig.Signature),
+						Signature:      common.FromHex(sig.Signature),
 					}
 				}
 				return credentials
@@ -113,7 +113,7 @@ func toGuarantees(input []Guarantee) workreport.Guarantees {
 				},
 				CoreIndex:      g.Report.CoreIndex,
 				AuthorizerHash: g.Report.AuthorizerHash,
-				Output:         common.Hex2Bytes(g.Report.AuthOutput),
+				Output:         common.FromHex(g.Report.AuthOutput),
 				SegmentRootLookup: func() map[common.Hash]common.Hash {
 					lookup := make(map[common.Hash]common.Hash, len(g.Report.SegmentRootLookup))
 					for _, item := range g.Report.SegmentRootLookup {
@@ -130,7 +130,7 @@ func toGuarantees(input []Guarantee) workreport.Guarantees {
 							PayloadHash:     result.PayloadHash,
 							Gas:             result.AccumulateGas,
 							ExecResult: &workreport.ExecResult{
-								Output: common.Hex2Bytes(result.Result.Ok),
+								Output: common.FromHex(result.Result.Ok),
 								// TODO: Check exec error, in jam test vectors, no vector has been prepared yet.
 							},
 						}
@@ -200,7 +200,7 @@ func toPendingWorkReports(availAssignments []*AvailAssignment) *workreport.Pendi
 				},
 				CoreIndex:      assignment.Report.CoreIndex,
 				AuthorizerHash: assignment.Report.AuthorizerHash,
-				Output:         common.Hex2Bytes(assignment.Report.AuthOutput),
+				Output:         common.FromHex(assignment.Report.AuthOutput),
 				SegmentRootLookup: func() map[common.Hash]common.Hash {
 					lookup := make(map[common.Hash]common.Hash, len(assignment.Report.SegmentRootLookup))
 					for _, item := range assignment.Report.SegmentRootLookup {
@@ -217,7 +217,7 @@ func toPendingWorkReports(availAssignments []*AvailAssignment) *workreport.Pendi
 							PayloadHash:     result.PayloadHash,
 							Gas:             result.AccumulateGas,
 							ExecResult: &workreport.ExecResult{
-								Output: common.Hex2Bytes(result.Result.Ok),
+								Output: common.FromHex(result.Result.Ok),
 							},
 						}
 					}
@@ -236,8 +236,10 @@ func toServices(input []Account) *service.Services {
 	services := &service.Services{}
 	for _, account := range input {
 		services.Save(account.Id, &service.ServiceAccount{
-			CodeHash: account.Data.Service.CodeHash,
-			Balance:  account.Data.Service.Balance,
+			CodeHash:      account.Data.Service.CodeHash,
+			Balance:       account.Data.Service.Balance,
+			AccumulateGas: account.Data.Service.MinItemGas,
+			OnTransferGas: account.Data.Service.MinMemoGas,
 		})
 	}
 	return services

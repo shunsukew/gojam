@@ -17,8 +17,12 @@ const (
 
 type WorkReports []*WorkReport
 
-func (wr *WorkReports) ensureDependenciesExist(recentWorkPackageHashes map[common.Hash]struct{}) error {
+func (wr *WorkReports) ensureValidDependencies(recentWorkPackageHashes map[common.Hash]struct{}) error {
 	dependencies := wr.extractDependencyWorkPackageHashes()
+
+	if len(dependencies) > MaxDependencyItemsInReport {
+		return errors.WithMessagef(ErrInvalidWorkReport, "too many dependency work package hashes: %d, max is %d", len(dependencies), MaxDependencyItemsInReport)
+	}
 
 	for dep := range dependencies {
 		if _, ok := recentWorkPackageHashes[dep]; !ok {
@@ -96,6 +100,21 @@ type ExecError int
 type ExecResult struct {
 	Output []byte    // Y
 	Error  ExecError // J ∈ {∞, ☇, ⊚, BAD, BIG}
+}
+
+func (wr *WorkReport) outputSize() int {
+	if wr == nil {
+		return 0
+	}
+
+	size := len(wr.Output)
+	for _, workResult := range wr.WorkResults {
+		if workResult.ExecResult.Output != nil {
+			size += len(workResult.ExecResult.Output)
+		}
+	}
+
+	return size
 }
 
 func (wr *WorkReport) validateGasRequirements(services *service.Services) error {
