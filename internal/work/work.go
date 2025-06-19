@@ -43,7 +43,8 @@ func (rc *RefinementContext) ValidateAnchors(timeSlot jamtime.TimeSlot, recentBl
 			rc.LookupAnchorTimeSlot, jamtime.MaxLookupAnchorAge, timeSlot)
 	}
 
-	// TODO: Check lookup anchor requirements
+	// TODO: Check lookup anchor header hash exists in last MaxLookupAnchorAge ancestor headers.
+	// This requires storing all headers, and functiion to retrieve them.
 
 	return nil
 }

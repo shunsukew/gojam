@@ -43,7 +43,7 @@ func TestWorkReportGuarantee(t *testing.T) {
 					require.NoErrorf(t, err, "failed to read test vector file: %s", filePath)
 				}
 
-				// if !strings.Contains(filePath, "too_big_work_report_output") {
+				// if !strings.Contains(filePath, "segment_root_lookup_invalid") {
 				// return
 				// }
 
@@ -66,8 +66,8 @@ func TestWorkReportGuarantee(t *testing.T) {
 					toAuthorizerPools(testVector.PreState.AuthPools),
 					toServices(testVector.PreState.Accounts),
 					toRecentHistory(testVector.PreState.RecentBlocks),
+					nil,
 				)
-				fmt.Println(err)
 				if expectedOutput.Err != "" {
 					require.Error(t, err, "error expected: %v", expectedOutput.Err)
 					return

@@ -8,6 +8,7 @@ import (
 	"maps"
 
 	"github.com/pkg/errors"
+	"github.com/shunsukew/gojam/internal/accumulate"
 	authpool "github.com/shunsukew/gojam/internal/authorizer/pool"
 	"github.com/shunsukew/gojam/internal/entropy"
 	"github.com/shunsukew/gojam/internal/history"
@@ -81,6 +82,7 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 	authorizerPools *authpool.AuthorizerPools,
 	services *service.Services,
 	recentBlocks *history.RecentHistory,
+	accumulateHistory *accumulate.AccumulationHistory,
 ) ([]ed25519.PublicKey, error) {
 	// At this point, PendingWorkReports must be ρ†† (intermidiate state after availability assurances).
 
@@ -158,8 +160,11 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 		if err != nil {
 			return nil, err
 		}
+
+		// TODO: Check signature, which requires JAM codec implementation.
 	}
 
+	// Contextual Validity of work reports
 	for _, rc := range refinementContexts {
 		err = rc.ValidateAnchors(timeSlot, recentBlocks)
 		if err != nil {
@@ -185,6 +190,9 @@ func (p *PendingWorkReports) GuaranteeNewWorkReports(
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: We require that the work-package of the report not be the work-package of some other report made in the past.
+	// Better to be implemented after having accumulation queue and history.
 
 	// Update ρ after all validations passed
 	for _, guarantee := range guarantees {

@@ -1,6 +1,8 @@
 package workreport
 
 import (
+	"maps"
+
 	"github.com/pkg/errors"
 	"github.com/shunsukew/gojam/internal/service"
 	"github.com/shunsukew/gojam/internal/work"
@@ -18,13 +20,17 @@ const (
 type WorkReports []*WorkReport
 
 func (wr *WorkReports) ensureValidDependencies(recentWorkPackageHashes map[common.Hash]struct{}) error {
-	dependencies := wr.extractDependencyWorkPackageHashes()
+	allDependencies := make(map[common.Hash]struct{}, len(*wr)*MaxDependencyItemsInReport)
 
-	if len(dependencies) > MaxDependencyItemsInReport {
-		return errors.WithMessagef(ErrInvalidWorkReport, "too many dependency work package hashes: %d, max is %d", len(dependencies), MaxDependencyItemsInReport)
+	for _, report := range *wr {
+		dependencies, err := report.extractDependencies()
+		if err != nil {
+			return err
+		}
+		maps.Copy(allDependencies, dependencies)
 	}
 
-	for dep := range dependencies {
+	for dep := range allDependencies {
 		if _, ok := recentWorkPackageHashes[dep]; !ok {
 			return errors.WithMessagef(ErrInvalidWorkReport, "dependency work package hash %s does not exist in recent work packages", dep.ToHex())
 		}
@@ -33,20 +39,26 @@ func (wr *WorkReports) ensureValidDependencies(recentWorkPackageHashes map[commo
 	return nil
 }
 
-// TODO: Convert output to map of work report hash to dependency work package hashes, so that we can know which work report has invalid dependencies in error msg and logging.
-func (wr *WorkReports) extractDependencyWorkPackageHashes() map[common.Hash]struct{} {
+// Extract pre-requisite work package hashes and segment root lookups from the work report.
+func (wr *WorkReport) extractDependencies() (map[common.Hash]struct{}, error) {
+	var numOfDependencies int
 	workPackageHashes := make(map[common.Hash]struct{})
-	for _, report := range *wr {
-		for _, preRequisiteWorkPackageHash := range report.RefinementContext.PreRequisiteWorkPackageHashes {
-			workPackageHashes[preRequisiteWorkPackageHash] = struct{}{}
-		}
-
-		for workPackageHash := range report.SegmentRootLookup {
-			workPackageHashes[workPackageHash] = struct{}{}
-		}
+	for _, preRequisiteWorkPackageHash := range wr.RefinementContext.PreRequisiteWorkPackageHashes {
+		workPackageHashes[preRequisiteWorkPackageHash] = struct{}{}
+		numOfDependencies++
 	}
 
-	return workPackageHashes
+	for workPackageHash := range wr.SegmentRootLookup {
+		workPackageHashes[workPackageHash] = struct{}{}
+		numOfDependencies++
+	}
+
+	if numOfDependencies > MaxDependencyItemsInReport {
+		return nil, errors.WithMessagef(ErrInvalidWorkReport, "too many dependency work package hashes for work report: %d, max is %d",
+			len(workPackageHashes), MaxDependencyItemsInReport)
+	}
+
+	return workPackageHashes, nil
 }
 
 func (wr *WorkReports) ensureSegmentRoots(recentSegmentRootLookups map[common.Hash]common.Hash) error {
