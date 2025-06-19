@@ -16,5 +16,5 @@ type RecentBlock struct {
 	HeaderHash            common.Hash                 // h ∈ H;blackboard
 	StateRoot             common.Hash                 // s ∈ H;blackboard
 	AccumulationResultMMR mmr.MMR                     // b ∈ ⟦H;blackboard?⟧
-	WorkPackageHashes     map[common.Hash]common.Hash // Work package hash <> segment root mapping derived from work reports.
+	WorkPackageHashes     map[common.Hash]common.Hash // p: Work package hash <> segment root mapping derived from work reports.
 }

@@ -91,6 +91,10 @@ func (ts TimeSlot) InTicketSubmissionPeriod() bool {
 	return ts.ToTimeSlotInEpoch() < TicketSubmissionDeadline
 }
 
+func (ts1 TimeSlot) InSameGuarantorRotationPeriod(ts2 TimeSlot) bool {
+	return ts1/GuarantorRotationPeriod == ts2/GuarantorRotationPeriod
+}
+
 func (ts TimeSlot) ToEpoch() Epoch {
 	return Epoch(ts / TimeSlotsPerEpoch)
 }

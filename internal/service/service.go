@@ -9,7 +9,7 @@ const (
 	MaxPreimageAvailabilityHistorySize = 3
 )
 
-type ServiceId uint8 // ℕ_S
+type ServiceId uint32 // ℕ_S
 
 type Balance uint64 // ℕ_B
 
@@ -18,6 +18,18 @@ type Gas uint64 // ℕ_G
 // δ ∈ D⟨NS → A⟩
 type Services struct {
 	services map[ServiceId]*ServiceAccount
+}
+
+func (s *Services) Get(serviceId ServiceId) (*ServiceAccount, bool) {
+	service, ok := s.services[serviceId]
+	return service, ok
+}
+
+func (s *Services) Save(serviceId ServiceId, account *ServiceAccount) {
+	if s.services == nil {
+		s.services = make(map[ServiceId]*ServiceAccount)
+	}
+	s.services[serviceId] = account
 }
 
 type PreimageAvailabilityHistory []jamtime.TimeSlot
