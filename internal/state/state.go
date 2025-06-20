@@ -27,14 +27,10 @@ type State struct {
 	PrivilegedServices                                         // χ: The privileged service indices.
 	DisputeState                dispute.DisputeState           // ψ: Past judgments/verdicts on work-reports and validators.
 	ValidatorActivityStatistics                                // π: The activity statistics for the validators.
-	AccumulationQueue                                          // θ: The accumulation queue.
+	AccumulationQueue           accumulate.AccumulationQueue   // θ: The accumulation queue.
 	AccumulationHistory         accumulate.AccumulationHistory // ξ: The accumulation history.
 }
 
 type PrivilegedServices struct{}
 
-type PastJudgements struct{}
-
 type ValidatorActivityStatistics struct{}
-
-type AccumulationQueue struct{}

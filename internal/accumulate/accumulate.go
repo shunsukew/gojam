@@ -1,4 +1,5 @@
 package accumulate
 
-type AccumulationHistory struct {
-}
+type AccumulationQueue struct{}
+
+type AccumulationHistory struct{}
