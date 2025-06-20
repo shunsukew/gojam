@@ -1,6 +1,7 @@
 # GoJAM
 
 JAM (Join Accumulate Machine) implementation in Go.
+Gray Paper: https://graypaper.com
 
 ## Tests
 
