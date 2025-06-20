@@ -25,5 +25,5 @@ make full-integration
 
 ## Development Status
 
-Currently, implemeted block import state transition logics by Gray Paper Chapter 11 Reporting and Assurance.
+Currently, implemeted block import state transition logics through Gray Paper Chapter 11 Reporting and Assurance.
 Exceptions: ([#24](https://github.com/shunsukew/gojam/issues/24), [#25](https://github.com/shunsukew/gojam/issues/25), [#26](https://github.com/shunsukew/gojam/issues/26)).
